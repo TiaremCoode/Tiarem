@@ -3,8 +3,8 @@
 Backend real sobre el maquetado de la primera etapa: base de datos MySQL
 normalizada, DCL con usuarios restringidos, modelos PHP orientados a
 objetos alineados al modelo relacional, gestión de usuarios (registro,
-login tradicional, login con Google y administración de cuentas desde
-el rol admin general), un módulo real de participantes y equipos
+login y administración de cuentas desde el rol admin general), un
+módulo real de participantes y equipos
 preparado para cualquier disciplina, manejo centralizado de errores, y
 todo corriendo sobre Apache, dockerizado.
 
@@ -35,6 +35,112 @@ para la siguiente etapa. El modelo de datos ya está preparado para ellos
 (tablas `rondas`, `enfrentamientos`, `resultados`, `tabla_posiciones`), y
 el panel del organizador muestra dónde van a ir esas acciones, con una
 nota aclaratoria en vez de fingir que funcionan.
+
+## Revisión de esta entrega antes de pasar a la tercera etapa
+
+Antes de avanzar se repasó todo el código de esta etapa contra la
+consigna y se corrigió lo siguiente:
+
+- **Bug real, no solo estilo**: el `Dockerfile` instalaba `pdo`,
+  `pdo_mysql`, `mysqli` y `curl`, pero no `mbstring` — extensión que la
+  imagen base `php:8.2-apache` NO trae compilada por defecto. El código
+  usa `mb_strlen()` (validar largo de contraseña y de nombre de torneo)
+  y `mb_strtoupper()`/`mb_substr()` (iniciales del avatar en el perfil),
+  así que **el registro, el alta de usuario por el admin y la creación
+  de torneos tiraban error fatal apenas se probaban dentro del
+  contenedor real**, aunque el código se viera bien y corriera sin
+  problema en un PHP local que ya trajera esa extensión instalada. Se
+  agregó `mbstring` (y `libonig-dev`, la librería que necesita para
+  compilar) a `docker/php/Dockerfile`.
+- **Unificación de vistas**: cuatro vistas (`home`, `buscar`, `perfil`,
+  `detalle`) repetían el mismo ternario para pintar el estado de un
+  torneo, y `participantes` tenía uno parecido para equipos. Se movieron
+  a `app/Core/Presentacion.php`.
+- **Unificación de HTML repetido**: la banda de mensaje/error de
+  `perfil`, `participantes` y `admin/usuarios` (con sus estilos en
+  línea) pasó a `app/Views/partials/mensajes.php`; el esqueleto idéntico
+  de `errors/403.php` y `errors/404.php` pasó a
+  `app/Views/partials/error-page.php`.
+- **Estilos en línea → CSS**: todo `style="..."` suelto que había en las
+  vistas (páginas de error, formulario de admin, banda de mensajes) se
+  convirtió en clases de `base.css` (`.error-page*`, `.page-banner*`,
+  `.btn-outline-danger`, `.field-hint-center`, `.back-link` ahora
+  compartida) para no romper el requisito de tipografía y estilos
+  consistentes en toda la app.
+- Se revisó el resto de la consigna (modelo relacional, DCL, roles,
+  seguridad) y no se encontraron otras incompatibilidades; el detalle
+  está en el documento de trazabilidad de esta revisión.
+
+## Ajustes posteriores a la revisión
+
+- **Tercer bug real de base de datos: `Torneo::delUsuario()` rompía "Mis
+  torneos" apenas alguien entraba a su perfil.** La consulta usaba
+  `SELECT DISTINCT` pero ordenaba por `t.fecha_creacion`, columna que no
+  estaba en esa lista — MySQL 8 no lo permite (error 3065). Se agregó
+  `t.fecha_creacion` al `SELECT` (no cambia el resultado: depende 1 a 1
+  de `t.id`, que ya estaba en el `DISTINCT`, así que no puede generar
+  filas de más).
+- **Validación de punta a punta contra MySQL real**, no solo `php -l` y
+  pruebas con datos simulados: se instaló MySQL 8.0.46 (la misma
+  versión de la imagen del proyecto) y se levantó la aplicación
+  completa contra ella con el servidor embebido de PHP, simulando con
+  `curl` los flujos reales: registro, login, perfil, creación de
+  torneo individual y por equipos, alta de participante, búsqueda
+  pública, filtros, y el panel de administración completo (listado,
+  alta, edición, auditoría). Así se encontraron los tres bugs de base
+  de datos de esta sección — ninguno aparecía con `php -l` porque los
+  tres solo se manifiestan al ejecutar SQL real contra un MySQL real.
+- **Dos bugs reales en la base, encontrados corriendo todo contra un
+  MySQL 8.0.46 de verdad** (hasta acá se había verificado con `php -l`
+  y pruebas funcionales sin base de datos — esta vez se instaló MySQL
+  8.0.46 real, la misma versión exacta de la imagen del proyecto, y se
+  corrió `01_schema.sql` + `02_dcl.sh` + `03_seed.sql` de punta a punta):
+  1. `01_schema.sql` no llegaba a crear ni una sola tabla completa:
+     MySQL rechazaba `enfrentamientos` con el error 3823 porque
+     `participante1_id`/`participante2_id` tenían `ON UPDATE CASCADE`
+     en su FK **y** participaban en el `CHECK`
+     `chk_enfrentamiento_rivales_distintos` — MySQL no permite that
+     combinación, porque una cascada podría cambiarle el valor a una
+     columna que el `CHECK` tiene que poder seguir validando. Se pasó
+     esas dos FK a `ON UPDATE RESTRICT` (coherente con el `ON DELETE
+     RESTRICT` que ya tenían, y sin efecto práctico real ya que el `id`
+     de un participante nunca se actualiza).
+  2. Como `01_schema.sql` fallaba, Docker nunca llegaba a correr
+     `02_dcl.sh` — que además tenía su propio bug independiente: los
+     `REVOKE ALL PRIVILEGES ON mysql.* FROM ...` fallaban porque esos
+     usuarios recién creados nunca tuvieron un privilegio ahí para
+     empezar (no hay nada que revocar). Se sacaron esas líneas — un
+     usuario al que solo se le hace `GRANT` sobre la base de la
+     aplicación ya queda automáticamente sin acceso a `mysql.*`, no
+     hace falta revocarlo a mano.
+  Juntos, estos dos bugs explican el error de "Access denied" que
+  aparecía siempre, sin importar cuántas veces se reseteara el volumen
+  de MySQL: el usuario `sgdm_app` nunca llegaba a crearse.
+- **Se sacó el login con Google.** No terminaba de funcionar de forma
+  confiable y no valía la pena perder tiempo del proyecto arreglándolo.
+  El registro y el login ahora son únicamente con correo y contraseña
+  (`AuthController.php`); se eliminó `GoogleAuthController.php`, las
+  rutas `/auth/google*`, los botones correspondientes en las vistas de
+  login/registro, las variables `GOOGLE_*` de `.env.example` y
+  `docker-compose.yml`, y la columna `google_id` de `usuarios` (con su
+  `CHECK` asociado — ahora `password_hash` es simplemente `NOT NULL`,
+  porque toda cuenta se crea con contraseña propia).
+- **Navegación centrada de verdad.** En la navbar de escritorio, poner
+  el logo, los enlaces y los botones con `justify-content: space-between`
+  no centra los enlaces cuando el logo y los botones no miden lo mismo
+  — el grupo del medio queda corrido hacia el lado más angosto. Se
+  corrigió dándole `flex: 1` al logo y a los botones (uno alineado a la
+  izquierda, el otro a la derecha), así los enlaces quedan
+  matemáticamente centrados sin importar cuánto midan los costados.
+- **Hero de la home centrado.** El contenido del hero (título, bajada y
+  botones) estaba pensado con texto alineado a la izquierda dentro de
+  una columna centrada, lo que en pantallas grandes se veía corrido
+  hacia la izquierda. Se centró el texto y los botones del hero.
+- **Bug de filtros en "Buscar torneos".** El chip "Todos" se marcaba
+  activo con la condición `$formatoActivo === ''`, sin mirar el filtro
+  de estado — por eso, al elegir "En curso" (que solo toca
+  `$estadoActivo`), "Todos" quedaba marcado como activo también. Ahora
+  "Todos" solo se activa cuando ningún filtro está aplicado.
 
 ## Organización multi-deporte
 
@@ -68,7 +174,6 @@ cd sgdm
 # 2) Creá tu archivo de variables de entorno a partir del ejemplo
 cp .env.example .env
 # Editá .env y cambiá las contraseñas de ejemplo.
-# El login con Google podés dejarlo vacío por ahora (ver más abajo).
 
 # 3) Levantá todo
 docker compose up --build
@@ -98,8 +203,7 @@ docker compose up --build
 ## Cómo probarlo
 
 1. Entrá a `http://localhost:8080`, tocá "Crear cuenta" y registrate con
-   correo y contraseña (o con Google, si ya configuraste las
-   credenciales — ver abajo).
+   correo y contraseña.
 2. Andá a "Crear torneo": el asistente de 3 pasos persiste de verdad en
    la base — al terminar te da un código público y un link real al
    torneo.
@@ -135,48 +239,6 @@ dos botones:
 - **Ver registro de auditoría**: las últimas acciones registradas en el
   sistema.
 
-### Torneo de prueba (opcional)
-
-Para no tener que crear 37 cuentas a mano solo para ver cómo se ve un
-torneo lleno, `db/demo/` tiene un torneo de fútbol 5 completo (6 equipos,
-36 jugadores con nombres de futbolistas reales) listo para cargar. **No
-se ejecuta solo** — Docker únicamente corre lo que está directamente
-dentro de `db/`, nunca en subcarpetas — así que es 100% opcional y no
-afecta al sistema real de ninguna forma.
-
-Cargarlo:
-```bash
-docker compose exec -T db mysql -u root -p sgdm_db < db/demo/CARGAR_torneo_demo.sql
-```
-
-Todas las cuentas de prueba terminan en `@demo.test` y comparten
-la contraseña `Golazo2026!` (por ejemplo, `jugador01@demo.test` es
-Cristiano Ronaldo). El torneo queda con el código público `DEMOFUT1`.
-
-Borrarlo cuando quieras, sin dejar rastro:
-```bash
-docker compose exec -T db mysql -u root -p sgdm_db < db/demo/BORRAR_torneo_demo.sql
-```
-
-## Login con Google — cómo configurarlo
-
-1. Entrá a [Google Cloud Console → Credenciales](https://console.cloud.google.com/apis/credentials).
-2. Creá un proyecto (o usá uno existente) y creá un **ID de cliente de
-   OAuth 2.0** de tipo **Aplicación web**.
-3. En **URI de redireccionamiento autorizados**, agregá exactamente:
-   ```
-   http://localhost:8080/auth/google/callback
-   ```
-4. Copiá el **ID de cliente** y el **Secreto del cliente** a tu `.env`:
-   ```
-   GOOGLE_CLIENT_ID=...
-   GOOGLE_CLIENT_SECRET=...
-   ```
-5. Reiniciá el contenedor de la app: `docker compose restart app`.
-
-Si estas variables están vacías, el botón "Continuar con Google" va a
-mostrar un mensaje claro en vez de romperse.
-
 ## Estructura del proyecto
 
 ```
@@ -188,7 +250,7 @@ sgdm/
 │   ├── 02_dcl.sh             DCL — usuarios de base de datos restringidos
 │   └── 03_seed.sql           catálogos (roles, formatos, disciplinas con su organización)
 ├── docker/
-│   ├── php/Dockerfile        Apache + PHP 8.2 + extensiones (pdo_mysql, curl)
+│   ├── php/Dockerfile        Apache + PHP 8.2 + extensiones (pdo_mysql, curl, mbstring)
 │   └── apache/000-default.conf
 └── src/
     ├── public/                DocumentRoot de Apache
@@ -198,10 +260,10 @@ sgdm/
     └── app/                    fuera del DocumentRoot — nunca accesible por HTTP
         ├── bootstrap.php        autoloader propio + manejo centralizado de errores
         ├── Config/               Database.php, ReadOnlyDatabase.php
-        ├── Core/                 Router, Controller, Model, Auth, Csrf, Roles
+        ├── Core/                 Router, Controller, Model, Auth, Csrf, Roles, Presentacion
         ├── Models/               13 clases, una por tabla
-        ├── Controllers/          Home, Torneo, Participante, Auth, GoogleAuth, Perfil, Admin, Error
-        └── Views/                una carpeta por vista, PHP con HTML embebido
+        ├── Controllers/          Home, Torneo, Participante, Auth, Perfil, Admin, Error
+        └── Views/                una carpeta por vista, PHP con HTML embebido, más partials/ compartidos
 ```
 
 ## Trazabilidad — qué archivo resuelve cada punto de la consigna
@@ -213,7 +275,7 @@ sgdm/
 | Usuarios de base de datos con restricciones | `sgdm_app` (lectura/escritura, sin DDL) y `sgdm_readonly` (solo SELECT) en `db/02_dcl.sh`, usados desde `app/Config/Database.php` y `app/Config/ReadOnlyDatabase.php` |
 | Modelos alineados al modelo relacional | `app/Models/*.php` — una clase por tabla, mismo nombre de columnas |
 | Integración con PHP orientado a objetos | Todo `app/` — `Router`, `Controller`, `Model` y sus herencias concretas |
-| Gestión de usuarios funcionando | `app/Controllers/AuthController.php` (registro/login/logout) + `GoogleAuthController.php` (login con Google) + `AdminController.php` (alta/edición/baja de cuentas por el admin general) + `app/Core/Auth.php` (roles y sesión) |
+| Gestión de usuarios funcionando | `app/Controllers/AuthController.php` (registro/login/logout) + `AdminController.php` (alta/edición/baja de cuentas por el admin general) + `app/Core/Auth.php` (roles y sesión) |
 | Gestión de participantes y equipos | `app/Controllers/ParticipanteController.php` + modelos `Participante.php` y `Equipo.php`, con la organización por disciplina definida en `tipos_torneo` |
 | Implementación con Apache | `docker/php/Dockerfile` + `docker/apache/000-default.conf` + `src/public/.htaccess` |
 
@@ -225,22 +287,7 @@ sgdm/
 - **Contraseñas**: hasheadas con `password_hash()` (bcrypt), nunca en
   texto plano ni siquiera en los logs.
 - **CSRF**: todos los formularios que modifican datos incluyen un token
-  validado en el servidor (`app/Core/Csrf.php`). La cookie de sesión
-  además va con `SameSite=Lax`, una segunda barrera para el mismo
-  problema.
-- **Límite de intentos de login**: `AuthController::login()` frena a
-  las 5 fallas seguidas por correo en 15 minutos (`IntentoLogin.php`),
-  antes de siquiera verificar la contraseña — cierra fuerza bruta sobre
-  cuentas puntuales.
-- **Cookie de sesión endurecida**: `HttpOnly` (JavaScript no puede
-  leerla) y `Secure` cuando la conexión ya es HTTPS (`app/Core/Auth.php`).
-- **Cabeceras HTTP de seguridad**: `X-Content-Type-Options`,
-  `X-Frame-Options`, `Referrer-Policy` y un `Content-Security-Policy`
-  ajustado a lo que el sitio realmente carga, en
-  `docker/apache/000-default.conf`. Por eso `partials/user-context.php`
-  pasa el estado de sesión por un `<meta data-user>` en vez de un
-  `<script>` inline: así el CSP puede exigir `script-src 'self'` sin el
-  agujero de `'unsafe-inline'`.
+  validado en el servidor (`app/Core/Csrf.php`).
 - **Control de acceso**: `Auth::requireLogin()` / `Auth::requireRole()`
   se llaman al principio de cada acción que lo necesita, antes de tocar
   cualquier dato. La gestión de participantes verifica además, torneo
@@ -259,56 +306,3 @@ sgdm/
 - **Mensajes de error**: pensados para la persona que organiza o
   participa, no para quien programó el sistema (ej: "El correo o la
   contraseña no son correctos" en vez de un stack trace).
-
-Si ya tenés el proyecto corriendo desde antes (con tu cuenta y el
-torneo de prueba cargados), el límite de intentos de login necesita una
-tabla nueva que tu base todavía no tiene. No hace falta borrar nada — se
-agrega sola con:
-```bash
-Get-Content db/migraciones/001_intentos_login.sql | docker compose exec -T db mysql -u root -p sgdm_db
-```
-
-## Accesibilidad
-
-- **Contraste**: la paleta se revisó contra WCAG AA (4.5:1 en texto
-  normal). `--color-plata-tenue` se ajustó de `#8D97A1` a `#929CA6` — el
-  valor original daba 4.27:1 sobre las tarjetas, por debajo del mínimo.
-- **Lectores de pantalla**: los íconos puramente decorativos (flechas,
-  lupa, el ícono de "volver") llevan `aria-hidden="true"` para no
-  generar ruido; los mensajes de error del servidor llevan
-  `role="alert"` para que se anuncien solos apenas aparecen, sin que la
-  persona tenga que ir a buscarlos.
-- **Menos movimiento**: el sitio ya respetaba
-  `prefers-reduced-motion: reduce` (desactiva transiciones y el scroll
-  suave) para quien lo tiene configurado así a nivel sistema operativo.
-
-## Calidad de código
-
-- **PHPStan** (análisis estático, nivel 5) sobre `app/Core`, `app/Config`,
-  `app/Models` y `app/Controllers` — no analiza `app/Views` a propósito,
-  porque esas plantillas reciben sus variables por `extract()` y
-  PHPStan no tiene forma de saberlo. Es una herramienta de desarrollo,
-  no una dependencia del proyecto — el backend sigue corriendo sin
-  Composer. Para usarla hace falta tener Composer instalado en tu PC
-  (no en el contenedor):
-  ```bash
-  composer install
-  vendor/bin/phpstan analyse
-  ```
-  De hecho, el bug de esta semana en `GoogleAuthController` (un método
-  con una firma incompatible con la clase padre) es exactamente el tipo
-  de error que PHPStan detecta al instante, sin necesitar Docker
-  corriendo.
-- **`scripts/smoke-test.sh`**: prueba en segundos que las rutas
-  principales respondan lo que deberían (200, 302, 404 según
-  corresponda) después de levantar el proyecto. Se corre con
-  `bash scripts/smoke-test.sh` una vez que `docker compose up` ya está
-  arriba.
-- **`.github/workflows/smoke-test.yml`**: el mismo smoke test, pero
-  corrido automáticamente por GitHub Actions en cada push — levanta el
-  proyecto entero con Docker Compose, como en cualquier PC, y avisa si
-  algo se rompió.
-- **`.sqlfluff`**: configuración para lintear los `.sql` de `db/` con
-  [sqlfluff](https://sqlfluff.com/), si querés revisar el estilo del SQL
-  antes de agregar algo nuevo.
-
