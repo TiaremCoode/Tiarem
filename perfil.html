@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi perfil — X La Copa</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/nav.css">
+  <link rel="stylesheet" href="css/perfil.css">
+  <link rel="stylesheet" href="css/footer.css">
+</head>
+<body>
+
+  <div id="nav-mount" data-active="perfil"></div>
+
+  <main class="page">
+
+    <section class="profile-head">
+      <div class="container profile-head-inner">
+        <div class="avatar">MF</div>
+        <h1 class="display">Martina Fernández</h1>
+        <p class="profile-id">Usuario #10432</p>
+        <span class="tag champion-tag">🏆 Campeona — Copa Verano 2026</span>
+      </div>
+    </section>
+
+    <section class="container">
+      <div class="section-heading">
+        <h2 class="display">Mis torneos</h2>
+      </div>
+
+      <div class="tournaments-list">
+        <a class="card tournament-row" href="detalle-torneo.html">
+          <div class="tournament-row-info">
+            <span class="tag tag-en-curso"><span class="tag-dot"></span>En curso</span>
+            <h3>Copa Otoño — Ajedrez</h3>
+            <p class="tournament-meta">1° lugar actual · Ronda 3 de 6</p>
+          </div>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+
+        <a class="card tournament-row" href="detalle-torneo.html">
+          <div class="tournament-row-info">
+            <span class="tag tag-cerrado"><span class="tag-dot"></span>Finalizado</span>
+            <h3>Copa Verano 2026</h3>
+            <p class="tournament-meta">Campeona · Eliminación directa</p>
+          </div>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <section class="container">
+      <div class="section-heading">
+        <h2 class="display">Datos de la cuenta</h2>
+      </div>
+
+      <form class="card profile-form">
+        <div class="field">
+          <label for="nombre">Nombre y apellido</label>
+          <input id="nombre" class="input" type="text" value="Martina Fernández">
+        </div>
+        <div class="field">
+          <label for="email">Correo electrónico</label>
+          <input id="email" class="input" type="email" value="martina.fernandez@correo.com">
+        </div>
+        <button type="button" class="btn btn-secondary btn-block">Guardar cambios</button>
+      </form>
+    </section>
+
+    <section class="container">
+      <button type="button" class="btn btn-secondary btn-block logout-btn">Cerrar sesión</button>
+    </section>
+
+  </main>
+
+  <div id="footer-mount"></div>
+
+  <script src="js/nav.js"></script>
+  <script src="js/footer.js"></script>
+</body>
+</html>

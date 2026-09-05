@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crear torneo — X La Copa</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/nav.css">
+  <link rel="stylesheet" href="css/crear.css">
+  <link rel="stylesheet" href="css/footer.css">
+</head>
+<body>
+
+  <div id="nav-mount" data-active="crear"></div>
+
+  <main class="page">
+    <div class="container page-head">
+      <h1 class="display">Crear torneo</h1>
+      <p class="page-subhead">Tres pasos: formato, nombre y cantidad de participantes.</p>
+    </div>
+
+    <!-- Indicador de pasos -->
+    <div class="container steps-indicator" id="steps-indicator">
+      <div class="step active" data-step-indicator="1">
+        <span class="step-num">1</span>
+        <span class="step-label">Formato</span>
+      </div>
+      <div class="step-line"></div>
+      <div class="step" data-step-indicator="2">
+        <span class="step-num">2</span>
+        <span class="step-label">Nombre</span>
+      </div>
+      <div class="step-line"></div>
+      <div class="step" data-step-indicator="3">
+        <span class="step-num">3</span>
+        <span class="step-label">Participantes</span>
+      </div>
+    </div>
+
+    <form id="crear-torneo-form">
+
+      <!-- Paso 1: Formato -->
+      <section class="container form-step" data-step="1">
+        <h2 class="display step-title">Elegí el formato</h2>
+
+        <div class="format-options">
+          <label class="format-option">
+            <input type="radio" name="formato" value="suizo" checked>
+            <div class="format-option-body">
+              <h3>Sistema suizo</h3>
+              <p>Enfrenta a participantes con rendimiento similar, sin repetir rivales.</p>
+            </div>
+          </label>
+
+          <label class="format-option">
+            <input type="radio" name="formato" value="liga">
+            <div class="format-option-body">
+              <h3>Liga</h3>
+              <p>Todos contra todos, con tabla de posiciones y puntaje acumulado.</p>
+            </div>
+          </label>
+
+          <label class="format-option">
+            <input type="radio" name="formato" value="eliminacion">
+            <div class="format-option-body">
+              <h3>Eliminación directa</h3>
+              <p>Llaves a un partido. Quien pierde queda eliminado del torneo.</p>
+            </div>
+          </label>
+        </div>
+
+        <div class="step-actions">
+          <button type="button" class="btn btn-primary btn-block" data-action="next">Continuar</button>
+        </div>
+      </section>
+
+      <!-- Paso 2: Nombre -->
+      <section class="container form-step" data-step="2" hidden>
+        <h2 class="display step-title">Nombrá tu torneo</h2>
+        <div class="field">
+          <label for="nombre-torneo">Nombre del torneo</label>
+          <input id="nombre-torneo" class="input" type="text" placeholder="Ej: Copa Otoño 2026">
+          <span class="field-hint">Elegí un nombre corto y fácil de reconocer.</span>
+        </div>
+
+        <div class="step-actions step-actions-split">
+          <button type="button" class="btn btn-secondary" data-action="back">Atrás</button>
+          <button type="button" class="btn btn-primary" data-action="next">Continuar</button>
+        </div>
+      </section>
+
+      <!-- Paso 3: Participantes -->
+      <section class="container form-step" data-step="3" hidden>
+        <h2 class="display step-title">Cantidad de participantes</h2>
+        <div class="field">
+          <label for="max-participantes">Número máximo de participantes</label>
+          <input id="max-participantes" class="input" type="number" placeholder="Ej: 16" min="2">
+          <span class="field-hint">Podés cerrar la inscripción antes de llegar al máximo.</span>
+        </div>
+
+        <div class="step-actions step-actions-split">
+          <button type="button" class="btn btn-secondary" data-action="back">Atrás</button>
+          <button type="button" class="btn btn-primary" data-action="submit">Crear torneo</button>
+        </div>
+      </section>
+
+    </form>
+
+    <!-- Confirmación (solo maquetado, no se guarda nada) -->
+    <section class="container form-step" data-step="done" hidden>
+      <div class="done-card">
+        <div class="done-icon">&check;</div>
+        <h2 class="display step-title">¡Torneo creado!</h2>
+        <p>Este es solo un maquetado: nada se guardó todavía. Cuando el sistema esté conectado a la base de datos, tu torneo va a quedar listo para sumar participantes.</p>
+        <a href="index.html" class="btn btn-secondary btn-block">Volver al inicio</a>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="footer-mount"></div>
+
+  <script src="js/nav.js"></script>
+  <script src="js/footer.js"></script>
+  <script src="js/crear-torneo.js"></script>
+</body>
+</html>

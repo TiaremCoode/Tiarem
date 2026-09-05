@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>X La Copa — Gestión de torneos</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/nav.css">
+  <link rel="stylesheet" href="css/home.css">
+  <link rel="stylesheet" href="css/footer.css">
+</head>
+<body>
+
+  <div id="nav-mount" data-active="inicio"></div>
+
+  <main class="page">
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="container hero-inner">
+        <p class="eyebrow">Sistema de gestión de torneos</p>
+        <h1 class="display hero-title">Organizá tu<br>torneo en<br><span class="hero-title-accent">3 pasos</span></h1>
+        <p class="hero-copy">Elegí el formato, sumá participantes y dejá que el sistema arme el calendario por vos.</p>
+        <div class="hero-actions">
+          <a href="crear-torneo.html" class="btn btn-primary btn-block">Crear torneo</a>
+          <a href="buscar-torneos.html" class="btn btn-secondary btn-block">Buscar un torneo</a>
+        </div>
+      </div>
+    </section>
+
+    <div class="cut-divider container"></div>
+
+    <!-- Formatos disponibles -->
+    <section class="container">
+      <div class="section-heading">
+        <h2 class="display">Formatos</h2>
+      </div>
+      <div class="formats-grid">
+        <article class="card format-card">
+          <span class="tag">Sistema suizo</span>
+          <h3>Enfrentamientos por rendimiento</h3>
+          <p>Empareja participantes con puntajes similares y evita repetir rivales.</p>
+        </article>
+        <article class="card format-card">
+          <span class="tag">Liga</span>
+          <h3>Todos contra todos</h3>
+          <p>Tabla de posiciones con victorias, derrotas y puntaje acumulado.</p>
+        </article>
+        <article class="card format-card">
+          <span class="tag">Eliminación directa</span>
+          <h3>Llaves a un partido</h3>
+          <p>Octavos, cuartos, semifinal y final. Quien pierde, queda afuera.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- Torneos activos -->
+    <section class="container">
+      <div class="section-heading">
+        <h2 class="display">Torneos activos</h2>
+        <a href="buscar-torneos.html" class="section-link">Ver todos</a>
+      </div>
+
+      <div class="tournaments-list">
+        <a class="card tournament-row" href="detalle-torneo.html">
+          <div class="tournament-row-info">
+            <span class="tag tag-en-curso"><span class="tag-dot"></span>En curso</span>
+            <h3>Copa Otoño — Ajedrez</h3>
+            <p class="tournament-meta">Sistema suizo · 24 participantes · Ronda 3 de 6</p>
+          </div>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+
+        <a class="card tournament-row" href="detalle-torneo.html">
+          <div class="tournament-row-info">
+            <span class="tag tag-proximo"><span class="tag-dot"></span>Próximo a iniciar</span>
+            <h3>Liga Barrial de Fútbol 5</h3>
+            <p class="tournament-meta">Liga · 12 equipos · Inicia el 3 de agosto</p>
+          </div>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+
+        <a class="card tournament-row" href="detalle-torneo.html">
+          <div class="tournament-row-info">
+            <span class="tag tag-cerrado"><span class="tag-dot"></span>Finalizado</span>
+            <h3>Torneo Relámpago de Truco</h3>
+            <p class="tournament-meta">Eliminación directa · 16 participantes</p>
+          </div>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <!-- Orientación a nuevos usuarios (RNF) -->
+    <section class="container">
+      <div class="onboarding-card">
+        <h3>¿Primera vez en X La Copa?</h3>
+        <p>Creá un torneo, sumá participantes y el sistema arma el calendario según el formato que elijas.</p>
+        <a href="#" class="btn btn-secondary btn-sm">Ver cómo funciona</a>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="footer-mount"></div>
+
+  <script src="js/nav.js"></script>
+  <script src="js/footer.js"></script>
+</body>
+</html>

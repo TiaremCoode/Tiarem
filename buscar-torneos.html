@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buscar torneos — X La Copa</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/nav.css">
+  <link rel="stylesheet" href="css/buscar.css">
+  <link rel="stylesheet" href="css/footer.css">
+</head>
+<body>
+
+  <div id="nav-mount" data-active="buscar"></div>
+
+  <main class="page">
+    <div class="container page-head">
+      <h1 class="display">Buscar torneos</h1>
+      <p class="page-subhead">Consultá calendarios, resultados y posiciones sin necesidad de crear una cuenta.</p>
+    </div>
+
+    <div class="container search-bar-wrap">
+      <div class="search-bar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="search" class="search-input" placeholder="Nombre del torneo o ID">
+      </div>
+    </div>
+
+    <div class="container filters-scroll">
+      <button class="filter-chip active">Todos</button>
+      <button class="filter-chip">Sistema suizo</button>
+      <button class="filter-chip">Liga</button>
+      <button class="filter-chip">Eliminación directa</button>
+      <button class="filter-chip">En curso</button>
+    </div>
+
+    <section class="container">
+      <div class="results-list">
+
+        <a class="card tournament-row" href="detalle-torneo.html">
+          <div class="tournament-row-info">
+            <span class="tag tag-en-curso"><span class="tag-dot"></span>En curso</span>
+            <h3>Copa Otoño — Ajedrez</h3>
+            <p class="tournament-meta">Sistema suizo · 24 participantes · ID #4821</p>
+          </div>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+
+        <a class="card tournament-row" href="detalle-torneo.html">
+          <div class="tournament-row-info">
+            <span class="tag tag-proximo"><span class="tag-dot"></span>Próximo a iniciar</span>
+            <h3>Liga Barrial de Fútbol 5</h3>
+            <p class="tournament-meta">Liga · 12 equipos · ID #4830</p>
+          </div>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+
+        <a class="card tournament-row" href="detalle-torneo.html">
+          <div class="tournament-row-info">
+            <span class="tag tag-en-curso"><span class="tag-dot"></span>En curso</span>
+            <h3>Torneo de Pádel Club Norte</h3>
+            <p class="tournament-meta">Eliminación directa · 32 participantes · ID #4790</p>
+          </div>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+
+        <a class="card tournament-row" href="detalle-torneo.html">
+          <div class="tournament-row-info">
+            <span class="tag tag-cerrado"><span class="tag-dot"></span>Finalizado</span>
+            <h3>Torneo Relámpago de Truco</h3>
+            <p class="tournament-meta">Eliminación directa · 16 participantes · ID #4712</p>
+          </div>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+
+        <a class="card tournament-row" href="detalle-torneo.html">
+          <div class="tournament-row-info">
+            <span class="tag tag-cerrado"><span class="tag-dot"></span>Finalizado</span>
+            <h3>Liga de Verano — Vóley</h3>
+            <p class="tournament-meta">Liga · 8 equipos · ID #4655</p>
+          </div>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+
+      </div>
+    </section>
+  </main>
+
+  <div id="footer-mount"></div>
+
+  <script src="js/nav.js"></script>
+  <script src="js/footer.js"></script>
+</body>
+</html>

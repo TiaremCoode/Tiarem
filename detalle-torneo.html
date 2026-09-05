@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Copa Otoño — Ajedrez — X La Copa</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/nav.css">
+  <link rel="stylesheet" href="css/detalle.css">
+  <link rel="stylesheet" href="css/footer.css">
+</head>
+<body>
+
+  <div id="nav-mount" data-active=""></div>
+
+  <main class="page">
+
+    <div class="container torneo-head">
+      <a href="buscar-torneos.html" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        Volver
+      </a>
+      <span class="tag tag-en-curso"><span class="tag-dot"></span>En curso</span>
+      <h1 class="display torneo-title">Copa Otoño — Ajedrez</h1>
+      <p class="torneo-meta">ID #4821 · Sistema suizo · 24 participantes · Ronda 3 de 6</p>
+    </div>
+
+    <!-- Tabs de navegación interna -->
+    <div class="container tabs-scroll" role="tablist">
+      <button class="tab-item active" role="tab" aria-selected="true">Calendario</button>
+      <button class="tab-item" role="tab" aria-selected="false">Posiciones</button>
+      <button class="tab-item" role="tab" aria-selected="false">Participantes</button>
+      <button class="tab-item" role="tab" aria-selected="false">Estadísticas</button>
+    </div>
+
+    <!-- Calendario de enfrentamientos -->
+    <section class="container tab-panel">
+      <div class="section-heading">
+        <h2 class="display">Ronda 3</h2>
+      </div>
+
+      <div class="matches-list">
+        <div class="card match-row">
+          <div class="match-players">
+            <span class="player-name">M. Fernández</span>
+            <span class="match-vs">vs</span>
+            <span class="player-name">R. Gómez</span>
+          </div>
+          <span class="tag tag-cerrado">Resultado cargado: 1–0</span>
+        </div>
+
+        <div class="card match-row">
+          <div class="match-players">
+            <span class="player-name">L. Torres</span>
+            <span class="match-vs">vs</span>
+            <span class="player-name">C. Ibáñez</span>
+          </div>
+          <span class="tag tag-proximo">Pendiente</span>
+        </div>
+
+        <div class="card match-row">
+          <div class="match-players">
+            <span class="player-name">P. Suárez</span>
+            <span class="match-vs">vs</span>
+            <span class="player-name">A. Ríos</span>
+          </div>
+          <span class="tag tag-proximo">Pendiente</span>
+        </div>
+
+        <div class="card match-row">
+          <div class="match-players">
+            <span class="player-name">D. Molina</span>
+            <span class="match-vs">vs</span>
+            <span class="player-name">S. Castro</span>
+          </div>
+          <span class="tag tag-cerrado">Resultado cargado: ½–½</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tabla de posiciones (formato liga / suizo) -->
+    <section class="container">
+      <div class="section-heading">
+        <h2 class="display">Tabla de posiciones</h2>
+      </div>
+
+      <div class="table-scroll card">
+        <table class="standings-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Participante</th>
+              <th>Pts</th>
+              <th>PG</th>
+              <th>PP</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>M. Fernández</td>
+              <td>2.5</td>
+              <td>2</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>L. Torres</td>
+              <td>2.0</td>
+              <td>2</td>
+              <td>1</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>D. Molina</td>
+              <td>2.0</td>
+              <td>1</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>R. Gómez</td>
+              <td>1.5</td>
+              <td>1</td>
+              <td>1</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>C. Ibáñez</td>
+              <td>1.0</td>
+              <td>0</td>
+              <td>1</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Acciones de organizador (visibles si corresponde el rol) -->
+    <section class="container organizer-actions">
+      <div class="section-heading">
+        <h2 class="display">Panel del organizador</h2>
+      </div>
+      <div class="organizer-actions-grid">
+        <button class="btn btn-secondary btn-block">Cargar resultado</button>
+        <button class="btn btn-secondary btn-block">Cerrar ronda</button>
+        <button class="btn btn-secondary btn-block">Ver reportes</button>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="footer-mount"></div>
+
+  <script src="js/nav.js"></script>
+  <script src="js/footer.js"></script>
+</body>
+</html>
