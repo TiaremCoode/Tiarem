@@ -1,0 +1,11 @@
+{
+    "name": "sgdm/dev-tools",
+    "description": "Herramientas de desarrollo (análisis estático). NO es una dependencia de la aplicación en sí: el backend corre sin Composer, con un autoloader propio (ver app/bootstrap.php). Esto es solo para correr PHPStan localmente antes de entregar o de levantar Docker.",
+    "type": "project",
+    "require-dev": {
+        "phpstan/phpstan": "^1.11"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

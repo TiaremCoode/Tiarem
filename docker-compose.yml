@@ -1,0 +1,55 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: sgdm_db
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes:
+      - sgdm_db_data:/var/lib/mysql
+      # Los scripts de db/ se ejecutan una sola vez, en orden alfabético,
+      # la primera vez que el volumen de datos está vacío:
+      #   01_schema.sql -> modelo relacional (DDL)
+      #   02_dcl.sh     -> usuarios de base de datos restringidos (DCL)
+      #   03_seed.sql   -> catálogos (roles, formatos, tipos de torneo)
+      - ./db:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "3307:3306" # solo para conectarte con un cliente MySQL externo si querés inspeccionar la base
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: sgdm_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: sgdm_app
+      DB_PASS: ${SGDM_APP_DB_PASSWORD}
+      DB_READONLY_USER: sgdm_readonly
+      DB_READONLY_PASS: ${SGDM_READONLY_DB_PASSWORD}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      APP_URL: ${APP_URL}
+      APP_ENV: ${APP_ENV}
+    volumes:
+      - ./src:/var/www/html
+    ports:
+      - "8080:80"
+
+volumes:
+  sgdm_db_data:

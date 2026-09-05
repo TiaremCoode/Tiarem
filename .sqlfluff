@@ -1,0 +1,9 @@
+[sqlfluff]
+dialect = mysql
+templater = raw
+# db/02_dcl.sh no es un .sql (es un script de shell con SQL embebido en
+# un heredoc), así que sqlfluff no lo toca — solo mira los .sql sueltos.
+exclude_rules = LT05, LT12
+
+[sqlfluff:indentation]
+tab_space_size = 4

@@ -1,0 +1,14 @@
+parameters:
+    level: 5
+    paths:
+        - src/app/Core
+        - src/app/Config
+        - src/app/Models
+        - src/app/Controllers
+        - src/app/bootstrap.php
+    # app/Views/ queda afuera a propósito: son plantillas con HTML
+    # embebido que reciben sus variables por extract() desde
+    # Controller::view() — PHPStan no tiene forma de saber eso, y las
+    # marcaría todas como "variable indefinida" sin que sea un error real.
+    # El análisis de las clases (donde vive toda la lógica real) es lo
+    # que aporta valor acá.
