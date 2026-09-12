@@ -1,0 +1,66 @@
+.page-head {
+  padding: var(--space-lg) var(--space-md) var(--space-sm);
+}
+.page-head h1 { font-size: var(--fs-h1); }
+.page-subhead { color: var(--color-plata-tenue); margin-top: 0.4rem; max-width: 50ch; }
+
+.search-bar-wrap { margin-bottom: var(--space-md); }
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  background: var(--color-carbon-alto);
+  border: 1.5px solid var(--color-borde);
+  border-radius: var(--radius-sm);
+  padding: 0 1rem;
+  height: 50px;
+}
+.search-bar svg { width: 20px; height: 20px; color: var(--color-plata-tenue); flex-shrink: 0; }
+
+.search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--color-texto);
+  font-size: var(--fs-body);
+  height: 100%;
+}
+.search-input:focus { outline: none; }
+.search-input::placeholder { color: var(--color-plata-tenue); }
+
+.filters-scroll {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding-bottom: var(--space-md);
+  scrollbar-width: none;
+}
+.filters-scroll::-webkit-scrollbar { display: none; }
+
+.filter-chip {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1.5px solid var(--color-borde);
+  color: var(--color-plata-tenue);
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.filter-chip.active { background: var(--color-plata); border-color: var(--color-plata); color: var(--color-carbon); }
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+/* .tournament-row, .tournament-meta y .chevron ahora viven en base.css,
+   compartidas con home, perfil y participantes. */
+
+@media (min-width: 720px) {
+  .page-head { padding: var(--space-xl) 0 var(--space-sm); }
+}

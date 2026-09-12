@@ -1,0 +1,125 @@
+.page-head { padding: var(--space-lg) var(--space-md) var(--space-md); }
+.page-head h1 { font-size: var(--fs-h1); }
+.page-subhead { color: var(--color-plata-tenue); margin-top: 0.4rem; }
+
+/* Indicador de pasos */
+.steps-indicator {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-xl);
+}
+
+.step { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; flex-shrink: 0; }
+
+.step-num {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-carbon-alto);
+  border: 1.5px solid var(--color-borde);
+  color: var(--color-plata-tenue);
+  font-weight: 700;
+  font-size: var(--fs-caption);
+}
+
+.step.active .step-num { background: var(--color-plata); border-color: var(--color-plata); color: var(--color-carbon); }
+.step-label { font-size: 0.7rem; color: var(--color-plata-tenue); font-weight: 600; white-space: nowrap; }
+.step.active .step-label { color: var(--color-plata); }
+
+.step.completed .step-num { background: transparent; border-color: var(--color-plata); color: var(--color-plata); }
+.step.completed .step-label { color: var(--color-plata-tenue); }
+
+.step-line { flex: 1; height: 1.5px; background: var(--color-borde); margin: 0 0.4rem 1.1rem; }
+
+/* Bloques de paso */
+.form-step {
+  padding-top: var(--space-sm);
+  padding-bottom: var(--space-xl);
+  border-bottom: 1px solid var(--color-borde);
+  margin-bottom: var(--space-xl);
+}
+.form-step[data-step="3"],
+.form-step[data-step="done"] { border-bottom: none; }
+
+.step-title { font-size: var(--fs-h2); margin-bottom: var(--space-md); }
+
+/* Opciones de formato */
+.format-options { display: flex; flex-direction: column; gap: var(--space-sm); }
+
+.format-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  background: var(--color-azul-oscuro);
+  border: 1.5px solid var(--color-borde);
+  border-radius: var(--radius);
+  padding: var(--space-md);
+  cursor: pointer;
+}
+
+.format-option input { margin-top: 0.3rem; accent-color: var(--color-plata); flex-shrink: 0; }
+
+.format-option.selected,
+.format-option:has(input:checked) {
+  border-color: var(--color-plata);
+  background: rgba(200, 205, 211, 0.06);
+}
+
+.format-option-body h3 { font-size: var(--fs-body-lg); margin-bottom: 0.3rem; }
+.format-option-body p { color: var(--color-plata-tenue); margin: 0; font-size: var(--fs-body); }
+
+/* Acciones de cada paso */
+.step-actions { margin-top: var(--space-lg); }
+
+.step-actions-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+
+/* Pantalla de confirmación */
+.done-card {
+  text-align: center;
+  padding: var(--space-xl) var(--space-md);
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.done-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(76, 138, 106, 0.15);
+  color: var(--color-exito);
+  border: 1.5px solid var(--color-exito);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  margin: 0 auto var(--space-md);
+}
+
+.done-card p {
+  color: var(--color-plata-tenue);
+  margin-bottom: var(--space-lg);
+}
+
+@media (min-width: 720px) {
+  .format-options { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .format-option { flex-direction: column; }
+  .page-head { padding: var(--space-xl) 0 var(--space-md); }
+}
+
+/* Error general del envío (paso 3), independiente de los .error-msg de campo */
+.form-error-banner {
+  background: rgba(176, 85, 63, 0.12);
+  border: 1px solid rgba(176, 85, 63, 0.35);
+  color: #E4A896;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  font-size: var(--fs-caption);
+  margin-top: var(--space-md);
+}

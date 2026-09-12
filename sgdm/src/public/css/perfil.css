@@ -1,0 +1,39 @@
+.profile-head {
+  background: linear-gradient(160deg, var(--color-azul-oscuro) 0%, var(--color-carbon) 75%);
+  border-bottom: 1px solid var(--color-borde);
+  padding: var(--space-xl) 0 var(--space-lg);
+}
+
+.profile-head-inner { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; }
+
+.avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: var(--color-plata);
+  color: var(--color-carbon);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  margin-bottom: var(--space-sm);
+}
+
+.profile-head h1 { font-size: var(--fs-h1); }
+.profile-id { color: var(--color-plata-tenue); font-size: var(--fs-caption); margin: 0; }
+
+.champion-tag {
+  margin-top: var(--space-sm);
+  background: rgba(200, 162, 93, 0.14);
+  color: #C8A25D;
+}
+
+/* .tournaments-list, .tournament-row, .tournament-meta y .chevron ahora
+   viven en base.css, compartidas con home, buscar y participantes. */
+
+.profile-form { margin-bottom: var(--space-xl); }
+
+/* El color de "acción destructiva" ahora es .btn-outline-danger (base.css),
+   compartido con el botón de eliminar cuenta del panel de admin. */
+.logout-btn { margin-bottom: var(--space-lg); }

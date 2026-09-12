@@ -1,0 +1,99 @@
+# ---------------------------------------------------------------------------
+# Segmentación de red: dos subredes separadas en vez de una sola red plana.
+#   red_publica  (172.28.0.0/24) -> solo el WAF/proxy vive acá; es la única
+#                                    puerta de entrada desde fuera de Docker.
+#   red_interna  (172.28.1.0/24) -> app y db; sin acceso directo desde fuera.
+# ---------------------------------------------------------------------------
+networks:
+  red_publica:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+  red_interna:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.1.0/24
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: sgdm_db
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes:
+      - sgdm_db_data:/var/lib/mysql
+      # Los scripts de db/ se ejecutan una sola vez, en orden alfabético,
+      # la primera vez que el volumen de datos está vacío:
+      #   01_schema.sql -> modelo relacional (DDL)
+      #   02_dcl.sh     -> usuarios de base de datos restringidos (DCL)
+      #   03_seed.sql   -> catálogos (roles, formatos, tipos de torneo)
+      - ./db:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "3307:3306" # solo para conectarte con un cliente MySQL externo (Workbench) en desarrollo — sacar este mapeo en producción
+    networks:
+      - red_interna
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: sgdm_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: sgdm_app
+      DB_PASS: ${SGDM_APP_DB_PASSWORD}
+      DB_READONLY_USER: sgdm_readonly
+      DB_READONLY_PASS: ${SGDM_READONLY_DB_PASSWORD}
+      APP_URL: ${APP_URL}
+      APP_ENV: ${APP_ENV}
+    volumes:
+      - ./src:/var/www/html
+    # Ya no publica ningún puerto al host: solo es alcanzable desde
+    # adentro de red_interna, es decir, únicamente por el WAF.
+    networks:
+      - red_interna
+
+  # ---------------------------------------------------------------------
+  # WAF / proxy inverso: lo único expuesto al exterior. Nginx +
+  # ModSecurity + el ruleset de OWASP (Core Rule Set) inspeccionan cada
+  # petición HTTP en busca de patrones de ataque conocidos (inyección
+  # SQL, XSS, path traversal, etc.) y la cortan con un 403 antes de que
+  # llegue a Apache/PHP. Cumple el rol de IPS de capa de aplicación,
+  # parado físicamente en el medio entre "internet/usuario" y "apache/php".
+  # ---------------------------------------------------------------------
+  waf:
+    image: owasp/modsecurity-crs:nginx-alpine
+    container_name: sgdm_waf
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      BACKEND: "http://app:80"
+      PARANOIA: "1"          # nivel de estrictez del ruleset (1 = el más permisivo, menos falsos positivos)
+      ANOMALY_INBOUND: "5"
+      ANOMALY_OUTBOUND: "4"
+    ports:
+      - "8080:8080"
+    networks:
+      - red_publica
+      - red_interna
+
+volumes:
+  sgdm_db_data:
