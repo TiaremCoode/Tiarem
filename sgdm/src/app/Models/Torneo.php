@@ -13,7 +13,9 @@ class Torneo extends Model
     public static function porCodigoPublico(string $codigo): ?array
     {
         $stmt = ReadOnlyDatabase::connection()->prepare(
-            'SELECT t.*, tt.nombre AS tipo_nombre,
+            'SELECT t.*, tt.nombre AS tipo_nombre, tt.formato_resultado,
+                    tt.modalidad, tt.jugadores_por_equipo_min, tt.jugadores_por_equipo_max,
+                    tt.sets_para_ganar,
                     mc.codigo AS formato_codigo, mc.nombre AS formato_nombre,
                     u.nombre AS organizador_nombre, u.apellido AS organizador_apellido
              FROM torneos t
@@ -28,6 +30,12 @@ class Torneo extends Model
         return $row ?: null;
     }
 
+    /** Redacta o actualiza las reglas del torneo (RF: "apartado de reglas... siempre accesibles"). */
+    public static function actualizarReglas(int $torneoId, string $reglas): bool
+    {
+        return self::update($torneoId, ['reglas' => $reglas]);
+    }
+
     /**
      * Torneos visibles públicamente, con filtros opcionales de texto,
      * formato y estado. Usada tanto por el inicio (sin filtros, límite
@@ -36,9 +44,13 @@ class Torneo extends Model
     public static function buscarPublicos(string $texto = '', string $formatoCodigo = '', string $estado = '', int $limite = 50): array
     {
         $sql = 'SELECT t.id, t.codigo_publico, t.nombre, t.estado, t.max_participantes,
+                       tt.modalidad,
                        mc.codigo AS formato_codigo, mc.nombre AS formato_nombre,
-                       (SELECT COUNT(*) FROM participantes p WHERE p.torneo_id = t.id AND p.estado = "activo") AS inscriptos
+                       (SELECT COUNT(*) FROM participantes p WHERE p.torneo_id = t.id AND p.estado = "activo") AS inscriptos,
+                       (SELECT COUNT(DISTINCT p.equipo_id) FROM participantes p
+                         WHERE p.torneo_id = t.id AND p.estado = "activo" AND p.equipo_id IS NOT NULL) AS equipos_inscriptos
                 FROM torneos t
+                JOIN tipos_torneo tt ON tt.id = t.tipo_torneo_id
                 JOIN modulos_competencia mc ON mc.id = t.modulo_competencia_id
                 JOIN configuraciones_torneo c ON c.torneo_id = t.id
                 WHERE c.visible_publico = 1';

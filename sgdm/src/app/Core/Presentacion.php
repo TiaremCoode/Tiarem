@@ -104,4 +104,36 @@ final class Presentacion
         }
         return $partes ? implode(' ', $partes) : 'Menos de un minuto';
     }
+
+    /**
+     * Texto del resultado de un enfrentamiento ya jugado, adaptado a la
+     * disciplina (RF: "que el puntaje se adapte al deporte" — acotado a
+     * cómo se muestra/carga el resultado):
+     * 'simple'   -> "Resultado: 3–1"
+     * 'sets'     -> "3 a 1 sets"
+     * 'decision' -> "Ganó Fulano (por tiempo)" / "Empate"
+     * Devuelve texto plano sin escapar — quien llama aplica htmlspecialchars().
+     */
+    public static function resultadoTexto(array $enfrentamiento, string $formatoResultado): string
+    {
+        if ($formatoResultado === 'decision') {
+            if ($enfrentamiento['ganador_id'] === null) {
+                $texto = 'Empate';
+            } else {
+                $ganoP1 = (int) $enfrentamiento['ganador_id'] === (int) $enfrentamiento['participante1_id'];
+                $texto = 'Ganó ' . ($ganoP1 ? $enfrentamiento['p1_nombre'] : $enfrentamiento['p2_nombre']);
+            }
+            $motivo = match ($enfrentamiento['motivo'] ?? 'normal') {
+                'tiempo'   => ' (por tiempo)',
+                'abandono' => ' (abandono)',
+                default    => '',
+            };
+            return $texto . $motivo;
+        }
+
+        $p1 = self::numero($enfrentamiento['puntaje_participante1']);
+        $p2 = self::numero($enfrentamiento['puntaje_participante2']);
+
+        return $formatoResultado === 'sets' ? "{$p1} a {$p2} sets" : "Resultado: {$p1}–{$p2}";
+    }
 }

@@ -1,0 +1,35 @@
+/* ==========================================================================
+   Notificaciones — Mobile First
+   ========================================================================== */
+
+.notif-list { display: flex; flex-direction: column; gap: var(--space-sm); margin-bottom: var(--space-xl); }
+
+.notif-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  align-items: flex-start;
+}
+
+.notif-pendiente { border-color: var(--color-plata); }
+
+/* Corrección: sin align-items acá, el flex-container por defecto
+   estira ("stretch") a sus hijos al ancho completo — y como el
+   <span class="tag"> de arriba de todo (ej. "Torneo iniciado") es
+   flex, terminaba con el fondo de color ocupando todo el ancho de la
+   fila en vez de ajustarse al texto. */
+.notif-row-info { display: flex; flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+.notif-mensaje { font-weight: 600; margin: 0; }
+.notif-fecha { font-size: var(--fs-caption); color: var(--color-plata-tenue); margin: 0; }
+.notif-fecha a { color: var(--color-plata); }
+
+.notif-acciones { display: flex; gap: var(--space-sm); width: 100%; }
+.notif-acciones form { flex: 1; }
+.notif-acciones .btn { width: 100%; }
+
+@media (min-width: 560px) {
+  .notif-row { flex-direction: row; align-items: center; justify-content: space-between; }
+  .notif-acciones { width: auto; flex-shrink: 0; }
+  .notif-acciones form { flex: 0 0 auto; }
+  .notif-acciones .btn { width: auto; }
+}

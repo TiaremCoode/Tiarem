@@ -60,6 +60,10 @@ class ParticipanteController extends Controller
             'participantes'  => $participantes,
             'resumenEquipos' => $resumenEquipos,
             'cantidadActiva' => Participante::cantidadActivos((int) $torneo['id']),
+            // En disciplinas de equipo, "cuántos hay" y "cuántos caben"
+            // se cuentan en equipos (ver ParticipanteController::store()),
+            // no en jugadores sueltos.
+            'cantidadEquipos' => count($equipos),
             'mensaje'        => $_SESSION['participantes_mensaje'] ?? null,
             'error'          => $_SESSION['participantes_error'] ?? null,
         ]);
@@ -85,7 +89,17 @@ class ParticipanteController extends Controller
             $this->volverConError($codigo, 'Este torneo ya no está en etapa de inscripción.');
         }
 
-        if (Participante::cantidadActivos((int) $torneo['id']) >= (int) $torneo['max_participantes']) {
+        // Corrección: en una disciplina de equipo, max_participantes pasa
+        // a representar el máximo de EQUIPOS (así se lo pide y se lo
+        // valida ya en TorneoController::store()/crear.php), no la
+        // cantidad de jugadores sueltos — así que el cupo se controla acá
+        // contra la cantidad de equipos ya anotados, no contra
+        // Participante::cantidadActivos(). Sumar a alguien a un equipo
+        // YA anotado nunca debería chocar contra este máximo (no se está
+        // agregando un competidor nuevo); el cupo solo se revisa de
+        // verdad más abajo, si la persona va a formar un equipo nuevo.
+        if (!TipoTorneo::esDeEquipo($tipoTorneo)
+            && Participante::cantidadActivos((int) $torneo['id']) >= (int) $torneo['max_participantes']) {
             $this->volverConError($codigo, 'Ya se llegó al máximo de participantes para este torneo.');
         }
 
@@ -98,6 +112,9 @@ class ParticipanteController extends Controller
         if (Participante::yaInscripto((int) $torneo['id'], (int) $usuario['id'])) {
             $this->volverConError($codigo, 'Esa persona ya está anotada en este torneo.');
         }
+        if (Notificacion::invitacionPendiente((int) $torneo['id'], (int) $usuario['id'])) {
+            $this->volverConError($codigo, 'Esa persona ya tiene una invitación pendiente a este torneo.');
+        }
 
         $equipoId = null;
         if (TipoTorneo::esDeEquipo($tipoTorneo)) {
@@ -107,6 +124,13 @@ class ParticipanteController extends Controller
             if ($equipoExistenteId > 0) {
                 $equipoId = $equipoExistenteId;
             } elseif ($equipoNuevoNombre !== '') {
+                // Acá sí corresponde chequear el cupo: se está por sumar
+                // un equipo NUEVO a la cuenta de max_participantes
+                // (equipos máximos), a diferencia de sumar un integrante
+                // más a un equipo que ya estaba anotado.
+                if (count(Equipo::delTorneo((int) $torneo['id'])) >= (int) $torneo['max_participantes']) {
+                    $this->volverConError($codigo, 'Ya se llegó al máximo de equipos para este torneo.');
+                }
                 $equipoId = Equipo::create([
                     'nombre'     => $equipoNuevoNombre,
                     'creado_por' => $usuario['id'],
@@ -116,6 +140,17 @@ class ParticipanteController extends Controller
             }
         }
 
+        // RF: la persona decide en su cuenta si cualquiera la puede sumar
+        // directo a un torneo, o si prefiere que le llegue una invitación
+        // para aceptar o rechazar desde Notificaciones.
+        if (!$usuario['permite_agregado_directo']) {
+            Notificacion::crearInvitacion((int) $torneo['id'], (int) $usuario['id'], $equipoId, $torneo['nombre']);
+            Auditoria::registrar((int) Auth::user()['id'], 'invitar_participante', 'torneos', (int) $torneo['id'], Usuario::nombreCompleto($usuario));
+
+            $_SESSION['participantes_mensaje'] = Usuario::nombreCompleto($usuario) . ' prefiere aceptar antes de sumarse: le mandamos una invitación a sus notificaciones.';
+            $this->redirect("/torneos/{$codigo}/participantes");
+        }
+
         $participanteId = Participante::create([
             'torneo_id'  => $torneo['id'],
             'usuario_id' => $usuario['id'],
@@ -123,6 +158,7 @@ class ParticipanteController extends Controller
         ]);
 
         Auditoria::registrar((int) Auth::user()['id'], 'inscribir_participante', 'participantes', $participanteId, Usuario::nombreCompleto($usuario));
+        Notificacion::porAltaDeParticipante($torneo, $usuario);
 
         $_SESSION['participantes_mensaje'] = Usuario::nombreCompleto($usuario) . ' quedó anotado.';
         $this->redirect("/torneos/{$codigo}/participantes");

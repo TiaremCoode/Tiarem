@@ -97,6 +97,11 @@
       </form>
     </section>
 
+    <?php // Corrección: la privacidad se maneja ahora desde el menú de
+          // Ajustes (el ícono de tuerca, arriba a la derecha), con un
+          // interruptor, en vez de este cartel con casillero — accesible
+          // además desde cualquier página, no solo desde acá. ?>
+
     <?php if ($usuario['rol_codigo'] === Roles::ADMIN_GENERAL): ?>
       <section class="container">
         <div class="section-heading">

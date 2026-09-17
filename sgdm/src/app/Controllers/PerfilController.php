@@ -46,4 +46,38 @@ class PerfilController extends Controller
         $_SESSION['perfil_mensaje'] = 'Guardamos los cambios de tu perfil.';
         $this->redirect('/perfil');
     }
+
+    /** RF: "elegir si se te puede agregar a cualquier torneo o no". */
+    public function actualizarPrivacidad(): void
+    {
+        Auth::requireLogin();
+        $usuario = Auth::user();
+
+        // Desde la corrección del menú de Ajustes (accesible desde
+        // cualquier página, no solo /perfil), el formulario del
+        // interruptor manda a dónde volver en "redirigir_a". Se valida
+        // que sea una ruta relativa propia del sitio (empieza con "/" y
+        // no con "//" ni "/\\") para no abrir la puerta a un open
+        // redirect con una URL externa.
+        $volverA = (string) ($_POST['redirigir_a'] ?? '');
+        $esRutaPropiaSegura = $volverA !== ''
+            && str_starts_with($volverA, '/')
+            && !str_starts_with($volverA, '//')
+            && !str_starts_with($volverA, '/\\');
+        $destino = $esRutaPropiaSegura ? $volverA : '/perfil';
+
+        if (!Csrf::validate($_POST['csrf_token'] ?? null)) {
+            $_SESSION['perfil_mensaje'] = 'Tu sesión de formulario venció. Intentá de nuevo.';
+            $this->redirect($destino);
+        }
+
+        $permite = isset($_POST['permite_agregado_directo']);
+        Usuario::cambiarPreferenciaAgregado((int) $usuario['id'], $permite);
+        Auditoria::registrar((int) $usuario['id'], 'actualizar_privacidad', 'usuarios', (int) $usuario['id'], $permite ? 'alta directa' : 'requiere invitación');
+
+        $_SESSION['perfil_mensaje'] = $permite
+            ? 'Ahora cualquier organizador te puede sumar directo a un torneo.'
+            : 'A partir de ahora, sumarte a un torneo te va a llegar como invitación para aceptar o rechazar.';
+        $this->redirect($destino);
+    }
 }

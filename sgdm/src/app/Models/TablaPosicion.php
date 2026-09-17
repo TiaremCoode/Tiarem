@@ -17,17 +17,51 @@ class TablaPosicion extends Model
     public const PUNTOS_EMPATE = 1;
     public const PUNTOS_DERROTA = 0;
 
+    /**
+     * Tabla de posiciones del torneo, con el nombre a mostrar (el del
+     * equipo si la disciplina es de equipo, si no el de la persona) y
+     * cuánto anotó a favor y en contra en total — goles en fútbol, sets
+     * en pádel/vóley — para poder mostrar esas columnas además de
+     * puntos/victorias/derrotas (RF post-revisión: "que no quede solo
+     * puntos, PG y PP"). Se calcula igual que
+     * TorneoHistorial::calcularYGuardar() calcula el puntaje total: sumando
+     * el resultado propio en cada enfrentamiento jugado, sea como
+     * participante1 o como participante2.
+     */
     public static function delTorneo(int $torneoId): array
     {
         $stmt = static::db()->prepare(
-            'SELECT tp.*, u.nombre, u.apellido
+            'SELECT tp.*, u.nombre, u.apellido, eq.nombre AS equipo_nombre,
+                    COALESCE(marcador.a_favor, 0) AS a_favor,
+                    COALESCE(marcador.en_contra, 0) AS en_contra
              FROM tabla_posiciones tp
              JOIN participantes p ON p.id = tp.participante_id
              JOIN usuarios u      ON u.id = p.usuario_id
-             WHERE tp.torneo_id = ?
+             LEFT JOIN equipos eq ON eq.id = p.equipo_id
+             LEFT JOIN (
+                 SELECT pp.id AS participante_id,
+                        SUM(CASE WHEN e.participante1_id = pp.id THEN r.puntaje_participante1
+                                 WHEN e.participante2_id = pp.id THEN r.puntaje_participante2
+                                 ELSE 0 END) AS a_favor,
+                        SUM(CASE WHEN e.participante1_id = pp.id THEN r.puntaje_participante2
+                                 WHEN e.participante2_id = pp.id THEN r.puntaje_participante1
+                                 ELSE 0 END) AS en_contra
+                 FROM participantes pp
+                 JOIN enfrentamientos e ON (e.participante1_id = pp.id OR e.participante2_id = pp.id)
+                 JOIN resultados r      ON r.enfrentamiento_id = e.id
+                 JOIN rondas ro         ON ro.id = e.ronda_id
+                 WHERE ro.torneo_id = :torneo_id1
+                 GROUP BY pp.id
+             ) marcador ON marcador.participante_id = tp.participante_id
+             WHERE tp.torneo_id = :torneo_id2
              ORDER BY tp.puntos DESC, tp.victorias DESC'
         );
-        $stmt->execute([$torneoId]);
+        // Mismo criterio que Torneo::delUsuario(): con PDO::ATTR_EMULATE_PREPARES
+        // en false (ver Config/Database.php), el driver nativo de MySQL no
+        // admite repetir el mismo parámetro con nombre dos veces en la
+        // misma consulta, así que cada aparición necesita su propio alias
+        // aunque el valor sea idéntico.
+        $stmt->execute(['torneo_id1' => $torneoId, 'torneo_id2' => $torneoId]);
         return $stmt->fetchAll();
     }
 

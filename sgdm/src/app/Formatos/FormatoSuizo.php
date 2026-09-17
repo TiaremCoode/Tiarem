@@ -45,7 +45,12 @@ class FormatoSuizo implements FormatoInterface
 
     public function avanzarRonda(array $torneo, array $rondaCerrada): bool
     {
-        $totalRondas = $this->totalRondas(Participante::cantidadActivos((int) $torneo['id']));
+        // Corrección: en un suizo de equipos, la cantidad de rondas se
+        // calcula sobre la cantidad de EQUIPOS en competencia, no sobre
+        // la cantidad de jugadores sueltos (ver Competencia::esDeEquipo()
+        // y Participante::cantidadCompetidoresActivos()).
+        $cantidadCompetidores = Participante::cantidadCompetidoresActivos((int) $torneo['id'], Competencia::esDeEquipo($torneo));
+        $totalRondas = $this->totalRondas($cantidadCompetidores);
         if ((int) $rondaCerrada['numero'] >= $totalRondas) {
             return true;
         }

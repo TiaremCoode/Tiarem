@@ -72,7 +72,7 @@
           <label for="tipo-torneo">Disciplina (opcional)</label>
           <select id="tipo-torneo" name="tipo_torneo_id" class="select">
             <?php foreach ($tipos as $t): ?>
-              <option value="<?= (int) $t['id'] ?>" <?= $t['nombre'] === 'General' ? 'selected' : '' ?>><?= htmlspecialchars($t['nombre']) ?></option>
+              <option value="<?= (int) $t['id'] ?>" data-modalidad="<?= htmlspecialchars($t['modalidad']) ?>" <?= $t['nombre'] === 'General' ? 'selected' : '' ?>><?= htmlspecialchars($t['nombre']) ?></option>
             <?php endforeach; ?>
           </select>
           <span class="field-hint">Si no elegís ninguna, queda como "General".</span>
@@ -86,11 +86,11 @@
 
       <!-- Paso 3: Participantes -->
       <section class="container form-step" data-step="3" hidden>
-        <h2 class="display step-title">Cantidad de participantes</h2>
+        <h2 class="display step-title" data-step3-title>Cantidad de participantes</h2>
         <div class="field">
-          <label for="max-participantes">Número máximo de participantes</label>
+          <label for="max-participantes" data-step3-label>Número máximo de participantes</label>
           <input id="max-participantes" name="max_participantes" class="input" type="number" placeholder="Ej: 16" min="2" max="512">
-          <span class="field-hint">Podés cerrar la inscripción antes de llegar al máximo.</span>
+          <span class="field-hint" data-step3-hint>Podés cerrar la inscripción antes de llegar al máximo.</span>
         </div>
 
         <div id="crear-torneo-error" class="form-error-banner" hidden></div>

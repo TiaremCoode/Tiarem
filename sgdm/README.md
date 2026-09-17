@@ -41,6 +41,27 @@ Lo que se agregó en esta entrega, en concreto:
   campeón, mejor jugador, mayor puntaje, invicto y menos derrotas
   (`torneos_historial`), y el campeón le queda atribuido como título en
   su perfil (`TorneoHistorial::titulosDe()`, sección "Mis títulos").
+- **Puntaje adaptado a la disciplina** (solo en la carga de resultado,
+  a propósito no se simulan las reglas de cada juego particular):
+  fútbol y similares cargan dos números como siempre; pádel/vóley piden
+  "sets ganados" en vez de un puntaje suelto; ajedrez y similares piden
+  elegir quién ganó (o empate) y, opcionalmente, si fue por tiempo o
+  abandono. Sale automático de la disciplina que ya se elige al crear
+  el torneo (`tipos_torneo.formato_resultado`).
+- **Notificaciones**: bandeja unificada por usuario — invitaciones a
+  torneos, aviso de que un torneo propio arrancó, avisos que publica el
+  organizador, y (al organizador) que alguien se sumó o que el torneo
+  se completó (`Notificacion.php`, `/notificaciones`).
+- **Privacidad al anotarse**: cada cuenta elige en su perfil si
+  cualquiera la puede sumar directo a un torneo o si prefiere que le
+  llegue una invitación para aceptar o rechazar
+  (`usuarios.permite_agregado_directo`).
+- **Reglas y avisos por torneo**: el organizador redacta las reglas
+  (siempre visibles públicamente) y quien se anota tiene que aceptarlas
+  antes de ver el resto del torneo si todavía no lo hizo
+  (`participantes.acepto_reglas`); además puede llevar una cartelera de
+  avisos que notifica a los participantes activos al publicarse
+  (`Aviso.php`, `AvisoController.php`).
 
 ## Revisión de la tercera etapa (motor de competencia)
 
@@ -102,6 +123,169 @@ nada de lo nuevo usa una función o extensión de PHP que no esté ya
 declarada en `docker/php/Dockerfile`, ni una sintaxis de MySQL 8 que no
 funcione en AlmaLinux 9 (ver la sección "Servidor de destino:
 AlmaLinux 9" más abajo).
+
+## Revisión de las funcionalidades adicionales (notificaciones, invitaciones, reglas, puntaje adaptado)
+
+Después de cerrado el motor de competencia se sumaron cuatro piezas más
+sobre la misma base: puntaje adaptado a la disciplina, notificaciones,
+privacidad al anotarse (invitación en vez de alta directa) y reglas +
+avisos por torneo. Se probaron con el mismo criterio que el resto del
+proyecto — contra MySQL real y por HTTP, no solo `php -l` — y así
+apareció otro bug real, esta vez en una pieza que no era nueva:
+
+- **Bug real en `Core/Model.php` (clase base, no el código nuevo en
+  sí): un valor `false` se guardaba mal.** `Model::create()` y
+  `Model::update()` le pasan el array de datos directo a
+  `PDOStatement::execute()`. PHP castea un `false` a `''` (cadena
+  vacía) al convertirlo a string — no a `'0'` — así que cualquier
+  columna `BOOLEAN` en `false` rompía con "Incorrect integer value".
+  `true` nunca lo había mostrado porque castea a `'1'`, que sí es
+  válido. El primer campo booleano que de verdad se guarda en `false`
+  en todo el proyecto es
+  `usuarios.permite_agregado_directo`, y por eso recién apareció ahora.
+  Se corrigió una única vez, en la clase base
+  (`Model::normalizarValores()`, llamado desde `create()` y
+  `update()`), así que queda cubierto cualquier campo booleano nuevo
+  que se agregue de acá en adelante, no solo este.
+
+Aparte del bug, se verificó puntualmente algo que podía pasar
+desapercibido: a un participante ya `eliminado` en una llave de
+eliminación directa correctamente **no** le siguen llegando avisos del
+organizador después de perder — `Notificacion::porAviso()` solo
+notifica a quienes siguen `activo` (`Participante::delTorneo()`).
+
+## Corrección de errores reportados sobre el sistema ya entregado
+
+Con el sistema ya completo, se hizo una ronda de prueba de uso real
+(no automatizada: usando la interfaz tal como la usaría un
+organizador) que encontró un bug de lógica importante y varios
+problemas de interfaz. Se listan en el mismo orden en que se
+reportaron:
+
+1. **Títulos pegados al borde superior en "Registro de auditoría" y
+   "Mis torneos".** No era un problema de la clase `.page-head` /
+   `.section-heading` en sí: `admin/auditoria.php` reusa las clases
+   `.torneo-head`/`.torneo-title` de `detalle.css` para su encabezado,
+   pero esa vista nunca importaba `buscar.css` (que es donde vive
+   `.page-head`, la clase que sí usa su `<h1>`) — el mismo bug, en el
+   fondo, que ya se había corregido en `admin/usuarios.php` en su
+   momento, agregando esa misma hoja. Se agregó `buscar.css` a
+   `admin/auditoria.php`. El título "Mis torneos" en `perfil.php` tenía
+   otra causa: `.profile-head` es una sección "full-bleed" (fondo a lo
+   ancho completo) que no lleva ella misma la clase `.container` — la
+   lleva su `-inner` — así que la regla general de `base.css` que
+   separa contenedores consecutivos (`.container + .container`) nunca
+   llegaba a aplicarse ahí. Se agregó una regla puntual
+   `.profile-head + .container` en `perfil.css`.
+2. **Carga de resultados repensada.** Cuatro cambios sobre
+   `detalle.php`/`detalle.css`/`Competencia.php`:
+   - Se sacó la palabra "Puntaje" del campo (en fútbol se juega a
+     goles, no a puntos) y, siguiendo el pedido de dejarlo limpio en
+     los dos formatos, directamente no lleva ninguna palabra visible en
+     ningún caso (queda el `aria-label` para lectores de pantalla).
+   - Se reemplazaron las flechitas nativas del `<input type="number">`
+     (además de feas, con `step="0.01"` subían de a centésimos) por dos
+     botones +/- propios a los costados de cada campo, que sí suben o
+     bajan de a 1 (`.score-step` en `detalle.css`, cableados en
+     `detalle.js`).
+   - Se agregó `tipos_torneo.sets_para_ganar` (cuántos sets hacen falta
+     para ganar el partido en esa disciplina puntual: 2 en pádel, 3 en
+     vóley y tenis) y `Competencia::registrarResultado()` ahora rechaza
+     cualquier resultado de "sets" que no sea uno que de verdad pueda
+     darse en esa disciplina (ya no se puede cargar, por ejemplo, 4-2 en
+     un partido al mejor de 5).
+   - La página volvía arriba del todo al tocar "Cargar" porque el envío
+     sigue siendo un POST + redirect normal a propósito (pasar esa
+     carga a AJAX hubiera complicado mucho el caso en que ese resultado
+     cierra la ronda o el torneo, que cambia buena parte de la página).
+     En cambio, se guarda la posición del scroll en `sessionStorage`
+     justo antes de enviar el formulario y se la restaura apenas carga
+     la página de vuelta (`detalle.js`), así que en la práctica no
+     "salta" para el usuario.
+3. **Tabla de posiciones: decimales de más y columnas de menos.**
+   `tabla_posiciones.puntos` es `DECIMAL` a propósito (para no cerrarle
+   la puerta a una disciplina que puntúe fraccionado más adelante), y
+   MySQL siempre devuelve ese tipo de columna con sus dos decimales
+   (`"3.00"`), aunque en la práctica acá siempre se cargan enteros. La
+   vista ahora usa `Presentacion::numero()` (ya existía, se usaba en el
+   resultado de cada partido pero no en la tabla) que recorta los
+   `.00` y solo deja decimales si de verdad los hay. Además,
+   `TablaPosicion::delTorneo()` ahora también calcula cuánto anotó cada
+   quien a favor y en contra en total (misma lógica que ya usaba
+   `TorneoHistorial::calcularYGuardar()` para el puntaje total), y
+   `detalle.php` agrega esas columnas (goles a favor/en contra/
+   diferencia, o su equivalente en sets) salvo en formato "decision"
+   (ajedrez), donde no hay nada de eso para contar.
+4. **Notificaciones: fondo del cartel "Torneo iniciado" de más, y
+   título pegado al borde.** El fondo de más era un bug de Flexbox:
+   `.notif-row-info` no tenía `align-items` definido, así que por
+   default (`stretch`) estiraba a su hijo `<span class="tag">` a todo
+   el ancho de la fila en vez de dejarlo ajustado al texto — se agregó
+   `align-items: flex-start`. El título pegado es la misma causa que el
+   punto 1: `notificaciones.php` reusa `.torneo-head` de `detalle.css`
+   sin importar esa hoja; se la agregó.
+5. y 6. **Menú de Ajustes, con la privacidad como interruptor.** Se
+   armó un menú nuevo, accesible desde el ícono de tuerca arriba a la
+   derecha (mobile y desktop, `nav.js`/`nav.css`), con la opción de
+   privacidad como un interruptor on/off en vez del viejo cartel con
+   casillero de `perfil.php` (que se sacó de ahí). Queda preparado para
+   agregar más opciones más adelante sin rehacer el menú: cada opción
+   nueva es, en la práctica, otro bloque dentro del mismo
+   `ajustesPanel()`. Como el menú tiene que funcionar desde cualquier
+   página (no solo `/perfil`), `PerfilController::actualizarPrivacidad()`
+   ahora vuelve a la página desde la que se activó el interruptor en
+   vez de mandar siempre a `/perfil` — validando que sea una ruta
+   propia del sitio (empieza con `/`, no con `//`) para no abrir un
+   *open redirect*.
+7. **Ícono de notificaciones en desktop.** El botón de arriba a la
+   derecha decía "Notificaciones" en texto; ahora usa el mismo ícono de
+   campanita que ya se usaba en mobile (`nav.js`).
+8. **Mobile first.** Los tres puntos anteriores (Ajustes, campanita,
+   botones +/- de resultado) se pensaron primero para el ancho de un
+   celular. Un efecto concreto: con sesión iniciada, el topbar mobile
+   pasó a tener tres íconos (notificaciones, ajustes, buscar) en vez de
+   dos — en un celular angosto de verdad (~360px) ya no entraban cómodos
+   junto con el texto de la marca, así que ese texto (no el logo) se
+   oculta por debajo de los 380px de ancho (`nav.css`).
+9. **Bug de lógica: en un torneo por equipo, se enfrentaban jugadores
+   sueltos en vez de equipos.** Este era el más importante de los
+   reportados. La causa: `Competencia::iniciar()` le pasaba a
+   `Formatos/*::generarPrimeraRonda()` el resultado de
+   `Participante::delTorneo()` tal cual — todos los participantes
+   sueltos — sin importar si la disciplina era de equipo. El esquema de
+   `enfrentamientos` (ya de la segunda etapa) sigue guardando
+   `participante1_id`/`participante2_id`, así que la solución no fue
+   tocar ese esquema sino elegir, para una disciplina de equipo, un
+   único participante representante por equipo (el de menor id, el
+   primero que se anotó — mismo criterio que ya usaba
+   `TorneoHistorial::titulosDe()` para atribuirle el título al equipo
+   entero) y armar el fixture entre esos representantes
+   (`Participante::competidoresActivos()`, nuevo). De ahí en más, todo
+   lo que dependía de "cuántos participantes hay" para un torneo de
+   equipo pasó a contar equipos en vez de jugadores sueltos:
+   - `Competencia::iniciar()` (mínimo para arrancar) y
+     `Competencia::totalRondas()`/`FormatoSuizo::avanzarRonda()`
+     (cantidad de rondas) usan `Participante::cantidadCompetidoresActivos()`.
+   - `Enfrentamiento::deLaRonda()` y `TablaPosicion::delTorneo()` ahora
+     traen también el nombre del equipo (`LEFT JOIN equipos`), y
+     `detalle.php` lo muestra en vez del nombre de la persona
+     representante cuando corresponde.
+   - `Torneo::porCodigoPublico()`/`Torneo::buscarPublicos()` traen
+     `tipos_torneo.modalidad`, así que toda la app (creación de
+     torneo, gestión de participantes, búsqueda, home) puede saber si
+     un torneo es de equipo sin otra consulta.
+   - En una disciplina de equipo, `max_participantes` pasa a
+     significar "equipos máximo", no "jugadores máximo": el paso 3 del
+     asistente de creación (`crear.php`/`crear-torneo.js`) cambia el
+     rótulo según la disciplina elegida, y
+     `ParticipanteController::store()` controla el cupo contra la
+     cantidad de equipos ya anotados — sumar a alguien a un equipo que
+     YA estaba anotado nunca choca contra ese máximo, solo formar un
+     equipo nuevo cuando ya no hay lugar.
+   - Quedó fuera de esta corrección, a propósito, marcar qué jugador
+     puntual de un equipo hizo cada gol: la letra original ya lo dejaba
+     para más adelante ("aunque esta función se agrega más tarde,
+     todavía no").
 
 ## Revisión de la segunda etapa (antes de pasar a esta)
 
@@ -235,17 +419,29 @@ El sistema tiene que poder organizar torneos de cualquier disciplina —
 desde ajedrez hasta fútbol o esports — y eso exige más que una simple
 etiqueta de texto. Por eso cada fila de `tipos_torneo` define:
 
-- **modalidad**: `individual` (ajedrez, videojuegos 1v1) o `equipo`
-  (fútbol, vóley, pádel, truco en pareja).
+- **modalidad**: `individual` (ajedrez, videojuegos 1v1, tenis) o
+  `equipo` (fútbol, vóley, pádel, truco en pareja).
 - **rango de integrantes por equipo** (mínimo y máximo), solo cuando la
   modalidad es `equipo`.
+- **sets_para_ganar**, solo cuando `formato_resultado = 'sets'`: cuántos
+  sets hay que ganar para cerrar el partido en esa disciplina puntual
+  (pádel se juega al mejor de 3 → 2; tenis y vóley al mejor de 5 → 3).
+  `Competencia::registrarResultado()` lo usa para no dejar cargar un
+  resultado que en esa disciplina no llega a jugarse (por ejemplo, 4-2
+  en un partido al mejor de 5).
 
-El módulo de participantes usa este dato para adaptarse solo: si la
-disciplina es individual, alcanza con anotar a la persona; si es de
+El módulo de participantes usa el primer dato para adaptarse solo: si
+la disciplina es individual, alcanza con anotar a la persona; si es de
 equipo, el mismo formulario permite elegir un equipo ya cargado o crear
 uno nuevo al vuelo, y la pantalla de gestión avisa si un equipo quedó
 incompleto, completo o excedido según el rango de esa disciplina — sin
-tener que programar esa regla de nuevo para cada deporte.
+tener que programar esa regla de nuevo para cada deporte. En una
+disciplina de equipo, además, el motor de competencia arma el fixture
+entre equipos (no entre cada jugador suelto) y `max_participantes` pasa
+a leerse como "equipos máximo" en toda la app — ver el punto 9 de
+"Corrección de errores reportados sobre el sistema ya entregado", más
+arriba, con el detalle de por qué hizo falta ese cambio y cómo se
+implementó sin tocar el esquema de `enfrentamientos`.
 
 ## Requisitos
 
@@ -271,7 +467,7 @@ docker compose up --build
 
 La primera vez que se levanta el contenedor de `db`, MySQL ejecuta en
 orden los scripts de `db/`:
-1. `01_schema.sql` — crea las 14 tablas del modelo relacional.
+1. `01_schema.sql` — crea las 16 tablas del modelo relacional.
 2. `02_dcl.sh` — crea los usuarios `sgdm_app` (lectura/escritura
    restringida) y `sgdm_readonly` (solo lectura).
 3. `03_seed.sql` — carga los catálogos (roles, formatos, disciplinas con
@@ -394,7 +590,7 @@ sgdm/
 ├── docker-compose.yml
 ├── .env.example
 ├── db/
-│   ├── 01_schema.sql        DDL — modelo relacional normalizado (14 tablas)
+│   ├── 01_schema.sql        DDL — modelo relacional normalizado (16 tablas)
 │   ├── 02_dcl.sh             DCL — usuarios de base de datos restringidos
 │   └── 03_seed.sql           catálogos (roles, formatos, disciplinas con su organización)
 ├── docker/
@@ -405,13 +601,15 @@ sgdm/
     │   ├── index.php          front controller (único punto de entrada)
     │   ├── .htaccess           reescritura de URLs hacia index.php
     │   ├── css/ js/ assets/    igual que en el maquetado de la 1ª etapa
+    ├── scripts/
+    │   └── seed_demo.php      cuenta admin + 3 torneos de ejemplo (uno por formato) ya con participantes — ver "Datos de demo" al final
     └── app/                    fuera del DocumentRoot — nunca accesible por HTTP
         ├── bootstrap.php        autoloader propio + manejo centralizado de errores
         ├── Config/               Database.php, ReadOnlyDatabase.php
         ├── Core/                 Router, Controller, Model, Auth, Csrf, Roles, Presentacion, Competencia
         ├── Formatos/             FormatoInterface + FormatoLiga, FormatoEliminacionDirecta, FormatoSuizo
-        ├── Models/               14 clases, una por tabla
-        ├── Controllers/          Home, Torneo, Participante, Competencia, Auth, Perfil, Admin, Error
+        ├── Models/               16 clases, una por tabla (incluye Notificacion y Aviso)
+        ├── Controllers/          Home, Torneo, Participante, Competencia, Aviso, Notificacion, Auth, Perfil, Admin, Error
         └── Views/                una carpeta por vista, PHP con HTML embebido, más partials/ compartidos
 ```
 
@@ -419,7 +617,7 @@ sgdm/
 
 | Pedido de la consigna | Dónde está resuelto |
 |---|---|
-| Modelo relacional normalizado | `db/01_schema.sql` — 14 tablas en 3FN, con comentarios explicando cada decisión de normalización |
+| Modelo relacional normalizado | `db/01_schema.sql` — 16 tablas en 3FN, con comentarios explicando cada decisión de normalización |
 | DCL implementado | `db/02_dcl.sh` |
 | Usuarios de base de datos con restricciones | `sgdm_app` (lectura/escritura, sin DDL) y `sgdm_readonly` (solo SELECT) en `db/02_dcl.sh`, usados desde `app/Config/Database.php` y `app/Config/ReadOnlyDatabase.php` |
 | Modelos alineados al modelo relacional | `app/Models/*.php` — una clase por tabla, mismo nombre de columnas |
@@ -433,6 +631,12 @@ sgdm/
 | Módulo de resultados (carga, cierre de ronda, avance/finalización) | `app/Core/Competencia.php` + `app/Controllers/CompetenciaController.php` |
 | Historial del torneo + estadísticas finales | `app/Models/TorneoHistorial.php` (tabla `torneos_historial`) |
 | Título de campeón atribuido en el perfil | `TorneoHistorial::titulosDe()` + sección "Mis títulos" en `app/Views/perfil.php` |
+| Puntaje adaptado a la disciplina (fútbol/pádel/ajedrez y similares) | `tipos_torneo.formato_resultado` + `CompetenciaController::leerDecision()/leerPuntajes()` + `Presentacion::resultadoTexto()` |
+| Notificaciones (torneo iniciado, avisos, invitaciones, alguien se sumó, torneo completo) | `app/Models/Notificacion.php` + `NotificacionController.php` + vista `notificaciones.php` |
+| Privacidad al anotarse (alta directa o invitación a aceptar/rechazar) | `usuarios.permite_agregado_directo` + `ParticipanteController::store()` + `Notificacion::aceptarInvitacion()/rechazarInvitacion()` |
+| Reglas del torneo, siempre públicas, con aceptación obligatoria | `torneos.reglas` + `participantes.acepto_reglas` + `TorneoController::actualizarReglas()/aceptarReglas()` |
+| Avisos del organizador (cartelera + notifica a los participantes) | `app/Models/Aviso.php` + `AvisoController.php` + `Notificacion::porAviso()` |
+| Cuenta admin y torneos de ejemplo ya con participantes, para probar sin crear cuentas a mano | `src/scripts/seed_demo.php` — instrucciones en "Datos de demo", al final de este README |
 | Implementación completa del sistema | Todo lo anterior en conjunto — no quedan módulos pendientes de la letra original |
 | Sistema portable mediante Docker | `docker-compose.yml` (`db` + `app` + `waf`), con el ajuste de compatibilidad para AlmaLinux 9 documentado más arriba |
 
@@ -467,3 +671,35 @@ sgdm/
 - **Mensajes de error**: pensados para la persona que organiza o
   participa, no para quien programó el sistema (ej: "El correo o la
   contraseña no son correctos" en vez de un stack trace).
+
+## Datos de demo
+
+Para no tener que crear una cuenta y anotar participantes a mano antes
+de poder probar el sistema, hay un script que carga de una sola vez una
+cuenta admin y tres torneos de ejemplo —uno por cada formato— ya con
+todos sus participantes.
+
+**Cómo correrlo** (una sola vez, después de levantar los contenedores):
+
+```bash
+docker compose exec app php scripts/seed_demo.php
+```
+
+Si ya se había corrido antes, el script lo detecta y no hace nada (no
+duplica torneos). La salida en consola te muestra el código público de
+cada torneo creado.
+
+**Lo que carga:**
+
+| Cuenta | Contraseña | Qué es |
+|---|---|---|
+| `admin@xlacopa.demo` | `Demo1234` | Admin general — además organiza los tres torneos de demo |
+| `futbol1@xlacopa.demo` … `futbol15@xlacopa.demo` | `Demo1234` | 3 equipos de 5 en la **Liga de Fútbol 5** (formato liga, puntaje simple) — todavía en inscripción, para que la inicies vos y veas armarse el fixture |
+| `padel1@xlacopa.demo` … `padel10@xlacopa.demo` | `Demo1234` | 5 parejas en la **Copa de Pádel** (eliminación directa, puntaje en sets) — **ya iniciada**, con la ronda 1 mostrando una llave con pase directo (bye) |
+| `ajedrez1@xlacopa.demo` … `ajedrez6@xlacopa.demo` | `Demo1234` | 6 anotados en el **Suizo de Ajedrez** (puntaje por decisión: quién ganó / por tiempo / abandono) — todavía en inscripción |
+| `ajedrez7@xlacopa.demo` | `Demo1234` | Tiene la privacidad activada (no admite alta directa): le queda una **invitación pendiente** al torneo de ajedrez esperando en `/notificaciones` para aceptar o rechazar |
+
+La liga de fútbol además ya tiene reglas escritas y un aviso publicado,
+así que entrando con cualquiera de sus cuentas (`futbol1@xlacopa.demo`,
+por ejemplo) se puede probar el portón de aceptación de reglas de
+entrada.

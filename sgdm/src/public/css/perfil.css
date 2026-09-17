@@ -4,6 +4,18 @@
   padding: var(--space-xl) 0 var(--space-lg);
 }
 
+/* Corrección: .profile-head es una sección "full-bleed" (no lleva la
+   clase .container ella misma, la lleva su -inner), así que la regla
+   general de base.css que separa contenedores consecutivos
+   (.container + .container) nunca se aplicaba acá — la sección "Mis
+   torneos" quedaba pegada justo contra el border-bottom de arriba,
+   como si esa línea la cortara. */
+.profile-head + .container { margin-top: var(--space-xl); }
+
+@media (min-width: 900px) {
+  .profile-head + .container { margin-top: var(--space-2xl); }
+}
+
 .profile-head-inner { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; }
 
 .avatar {
@@ -33,6 +45,10 @@
    viven en base.css, compartidas con home, buscar y participantes. */
 
 .profile-form { margin-bottom: var(--space-xl); }
+
+/* .field-toggle: se usaba para el viejo checkbox de "Privacidad" acá en
+   el perfil, ahora reemplazado por el interruptor del menú de Ajustes
+   (ver .toggle-switch* en nav.css). */
 
 /* El color de "acción destructiva" ahora es .btn-outline-danger (base.css),
    compartido con el botón de eliminar cuenta del panel de admin. */

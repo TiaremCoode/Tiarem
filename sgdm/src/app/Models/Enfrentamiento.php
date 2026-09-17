@@ -6,19 +6,28 @@ class Enfrentamiento extends Model
 {
     protected static string $table = 'enfrentamientos';
 
-    /** Enfrentamientos de una ronda, con nombre de los participantes resueltos. */
+    /**
+     * Enfrentamientos de una ronda, con nombre de los participantes
+     * resueltos y, si corresponde (disciplina de equipo), el nombre del
+     * equipo de cada lado — en ese caso participante1_id/participante2_id
+     * apuntan al representante de cada equipo (ver
+     * Participante::competidoresActivos()), y la vista muestra el
+     * nombre del equipo en vez del de esa persona puntual.
+     */
     public static function deLaRonda(int $rondaId): array
     {
         $stmt = static::db()->prepare(
             'SELECT e.*,
-                    u1.nombre AS p1_nombre, u1.apellido AS p1_apellido,
-                    u2.nombre AS p2_nombre, u2.apellido AS p2_apellido,
-                    r.puntaje_participante1, r.puntaje_participante2, r.ganador_id
+                    u1.nombre AS p1_nombre, u1.apellido AS p1_apellido, eq1.nombre AS p1_equipo,
+                    u2.nombre AS p2_nombre, u2.apellido AS p2_apellido, eq2.nombre AS p2_equipo,
+                    r.puntaje_participante1, r.puntaje_participante2, r.ganador_id, r.motivo
              FROM enfrentamientos e
              JOIN participantes p1 ON p1.id = e.participante1_id
              JOIN usuarios u1      ON u1.id = p1.usuario_id
+             LEFT JOIN equipos eq1 ON eq1.id = p1.equipo_id
              LEFT JOIN participantes p2 ON p2.id = e.participante2_id
              LEFT JOIN usuarios u2      ON u2.id = p2.usuario_id
+             LEFT JOIN equipos eq2      ON eq2.id = p2.equipo_id
              LEFT JOIN resultados r     ON r.enfrentamiento_id = e.id
              WHERE e.ronda_id = ?
              ORDER BY e.orden ASC'

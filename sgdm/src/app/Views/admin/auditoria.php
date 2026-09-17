@@ -6,6 +6,12 @@
   <title>Auditoría — X La Copa</title>
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/nav.css">
+  <!-- buscar.css es la que define .page-head/.page-subhead (el título
+       "Registro de auditoría" usa esas clases): sin esta hoja el título
+       quedaba pegado al borde superior, sin el padding que le da esa
+       clase — el mismo bug que tenía admin/usuarios.php antes de
+       cargar también buscar.css. -->
+  <link rel="stylesheet" href="/css/buscar.css">
   <link rel="stylesheet" href="/css/detalle.css">
   <link rel="stylesheet" href="/css/footer.css">
 </head>

@@ -53,18 +53,81 @@ class TorneoController extends Controller
             $rondas
         );
 
+        $usuarioActual = Auth::user();
+        $miParticipacion = $usuarioActual
+            ? Participante::deUsuarioEnTorneo((int) $torneo['id'], (int) $usuarioActual['id'])
+            : null;
+        // RF: quien participa tiene que leer y aceptar las reglas apenas
+        // entra, si el organizador escribió alguna, antes de ver el resto.
+        $debeAceptarReglas = $miParticipacion
+            && trim((string) $torneo['reglas']) !== ''
+            && !$miParticipacion['acepto_reglas'];
+
         $this->view('detalle', [
             'torneo'                   => $torneo,
             'rondasConEnfrentamientos' => $rondasConEnfrentamientos,
             'totalRondas'              => $torneo['estado'] === 'inscripcion' ? 0 : Competencia::totalRondas($torneo),
+            'permiteEmpate'            => Competencia::permiteEmpate($torneo),
             'posiciones'               => TablaPosicion::delTorneo((int) $torneo['id']),
             'historial'                => $torneo['estado'] === 'finalizado' ? TorneoHistorial::delTorneo((int) $torneo['id']) : null,
+            'avisos'                   => Aviso::delTorneo((int) $torneo['id']),
             'cantidadActiva'           => Participante::cantidadActivos((int) $torneo['id']),
+            // Distinto de cantidadActiva cuando la disciplina es de
+            // equipo: ahí lo que hay que juntar para poder arrancar son
+            // 2 equipos, no 2 jugadores sueltos (ver Competencia::iniciar()).
+            'cantidadCompetidores'     => Participante::cantidadCompetidoresActivos((int) $torneo['id'], Competencia::esDeEquipo($torneo)),
             'puedeGestionar'           => Auth::esOrganizadorOAdmin($torneo),
+            'debeAceptarReglas'        => $debeAceptarReglas,
             'mensaje'                  => $_SESSION['torneo_mensaje'] ?? null,
             'error'                    => $_SESSION['torneo_error'] ?? null,
         ]);
         unset($_SESSION['torneo_mensaje'], $_SESSION['torneo_error']);
+    }
+
+    /** El organizador redacta o actualiza las reglas, siempre visibles públicamente en el detalle. */
+    public function actualizarReglas(string $codigo): void
+    {
+        $torneo = Torneo::porCodigoPublico(strtoupper($codigo));
+        if (!$torneo) {
+            http_response_code(404);
+            require __DIR__ . '/../Views/errors/404.php';
+            exit;
+        }
+        Auth::requireOrganizadorOAdmin($torneo);
+
+        if (!Csrf::validate($_POST['csrf_token'] ?? null)) {
+            $_SESSION['torneo_error'] = 'Tu sesión de formulario venció. Volvé a intentarlo.';
+            $this->redirect("/torneos/{$codigo}");
+        }
+
+        Torneo::actualizarReglas((int) $torneo['id'], trim((string) ($_POST['reglas'] ?? '')));
+        Auditoria::registrar((int) Auth::user()['id'], 'actualizar_reglas', 'torneos', (int) $torneo['id']);
+
+        $_SESSION['torneo_mensaje'] = 'Reglas actualizadas.';
+        $this->redirect("/torneos/{$codigo}");
+    }
+
+    /** RF: aceptación obligatoria de las reglas para poder seguir viendo el torneo del que se participa. */
+    public function aceptarReglas(string $codigo): void
+    {
+        Auth::requireLogin();
+        $torneo = Torneo::porCodigoPublico(strtoupper($codigo));
+        if (!$torneo) {
+            http_response_code(404);
+            require __DIR__ . '/../Views/errors/404.php';
+            exit;
+        }
+
+        if (!Csrf::validate($_POST['csrf_token'] ?? null)) {
+            $this->redirect("/torneos/{$codigo}");
+        }
+
+        $miParticipacion = Participante::deUsuarioEnTorneo((int) $torneo['id'], (int) Auth::user()['id']);
+        if ($miParticipacion) {
+            Participante::aceptarReglas((int) $miParticipacion['id']);
+        }
+
+        $this->redirect("/torneos/{$codigo}");
     }
 
     /** Formulario (asistente de 3 pasos). Requiere sesión iniciada. */

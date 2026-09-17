@@ -66,7 +66,14 @@
                   <span class="tag-dot"></span><?= htmlspecialchars($textoEstado) ?>
                 </span>
                 <h3><?= htmlspecialchars($t['nombre']) ?></h3>
-                <p class="tournament-meta"><?= htmlspecialchars($t['formato_nombre']) ?> · <?= (int) $t['inscriptos'] ?>/<?= (int) $t['max_participantes'] ?> participantes</p>
+                <p class="tournament-meta">
+                  <?= htmlspecialchars($t['formato_nombre']) ?> ·
+                  <?php if (($t['modalidad'] ?? 'individual') === 'equipo'): ?>
+                    <?= (int) $t['equipos_inscriptos'] ?>/<?= (int) $t['max_participantes'] ?> equipos
+                  <?php else: ?>
+                    <?= (int) $t['inscriptos'] ?>/<?= (int) $t['max_participantes'] ?> participantes
+                  <?php endif; ?>
+                </p>
               </div>
               <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
             </a>

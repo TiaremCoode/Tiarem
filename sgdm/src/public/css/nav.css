@@ -33,6 +33,16 @@
   color: var(--color-plata);
 }
 
+/* Corrección mobile-first: con sesión iniciada, el topbar ahora suma un
+   tercer ícono (Ajustes) a los de notificaciones y buscar — en un
+   celular angosto de verdad (~360px) los tres círculos de 42px más el
+   texto de la marca ya no entran cómodos. Se prioriza que los íconos
+   (las acciones que sí cambian) queden bien, y se saca solo el TEXTO
+   de la marca (el logo se mantiene) en esos anchos puntuales. */
+@media (max-width: 380px) {
+  .topbar-brand-text { display: none; }
+}
+
 .topbar-actions { display: flex; align-items: center; gap: var(--space-sm); }
 
 .topbar-search-btn,
@@ -46,8 +56,97 @@
   background: transparent;
   border: none;
   color: var(--color-plata);
+  cursor: pointer;
 }
 .topbar-search-btn:hover, .topbar-icon-btn:hover { background: rgba(200,205,211,0.08); }
+
+/* Badge de notificaciones no leídas — mismo punto rojo chico sobre el
+   ícono/botón que corresponda, tanto en el tabbar como en desktop. */
+.nav-badge-wrap { position: relative; }
+.nav-badge {
+  position: absolute;
+  top: -2px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--color-alerta);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+.tabbar-item.nav-badge-wrap .nav-badge { top: 2px; right: 22%; }
+
+/* Menú de Ajustes (RF: nuevo menú, con la opción de privacidad como
+   primer contenido, preparado para sumar más adelante) — mismo botón
+   redondo que el resto de los íconos de la navegación, con un panel
+   desplegable debajo. Mobile-first: el panel se piensa primero para el
+   ancho de un celular (por eso el min() del width) y funciona igual,
+   sin overrides, en desktop. */
+.ajustes-wrap { position: relative; }
+
+.ajustes-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 50;
+  width: min(300px, calc(100vw - 2 * var(--space-md)));
+  background: var(--color-carbon-alto);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius);
+  padding: var(--space-md);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+.ajustes-dropdown[hidden] { display: none; }
+
+.ajustes-dropdown-title {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  color: var(--color-plata-tenue);
+  margin: 0 0 var(--space-sm);
+}
+
+/* Interruptor on/off (reemplaza el viejo checkbox + cartel de texto de
+   la pantalla de Privacidad) */
+.toggle-switch-row { display: flex; align-items: center; gap: var(--space-sm); cursor: pointer; }
+.toggle-switch-text { display: flex; flex-direction: column; gap: 0.2rem; flex: 1; }
+.toggle-switch-title { font-weight: 600; font-size: var(--fs-body); }
+.toggle-switch-hint { font-size: var(--fs-caption); color: var(--color-plata-tenue); }
+
+.toggle-switch { position: relative; flex-shrink: 0; width: 44px; height: 26px; }
+.toggle-switch input[type="checkbox"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.toggle-switch-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--color-borde);
+  transition: background 0.15s ease;
+  pointer-events: none;
+}
+.toggle-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-plata);
+  transition: transform 0.15s ease;
+}
+.toggle-switch input:checked + .toggle-switch-track { background: var(--color-exito); }
+.toggle-switch input:checked + .toggle-switch-track .toggle-switch-thumb { transform: translateX(18px); }
+.toggle-switch input:focus-visible + .toggle-switch-track { outline: 2px solid var(--color-plata); outline-offset: 2px; }
 
 /* Tabbar inferior — solo móvil / tablet chico */
 .tabbar {

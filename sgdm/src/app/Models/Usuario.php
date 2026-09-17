@@ -112,4 +112,10 @@ class Usuario extends Model
     {
         return self::update($usuarioId, ['estado' => $estado]);
     }
+
+    /** Preferencia de privacidad (RF: "elegir si se te puede agregar a cualquier torneo o no"). */
+    public static function cambiarPreferenciaAgregado(int $usuarioId, bool $permite): bool
+    {
+        return self::update($usuarioId, ['permite_agregado_directo' => $permite]);
+    }
 }

@@ -21,17 +21,25 @@ class Competencia
             throw new RuntimeException('El torneo ya fue iniciado.');
         }
 
-        $participantes = Participante::delTorneo((int) $torneo['id']);
-        if (count($participantes) < 2) {
-            throw new RuntimeException('Hacen falta al menos 2 participantes para iniciar el torneo.');
+        $esDeEquipo = self::esDeEquipo($torneo);
+        // Corrección: en un torneo de equipo, quien compite es cada
+        // equipo — no cada jugador suelto — así que tanto el mínimo para
+        // arrancar como el fixture que arma el Formato tienen que
+        // pensarse en esa unidad (ver Participante::competidoresActivos()).
+        $competidores = Participante::competidoresActivos((int) $torneo['id'], $esDeEquipo);
+        if (count($competidores) < 2) {
+            $unidad = $esDeEquipo ? 'equipos' : 'participantes';
+            throw new RuntimeException("Hacen falta al menos 2 {$unidad} para iniciar el torneo.");
         }
 
         Torneo::update((int) $torneo['id'], [
             'estado'       => 'en_curso',
             'fecha_inicio' => date('Y-m-d H:i:s'),
         ]);
-        self::formato($torneo['formato_codigo'])->generarPrimeraRonda($torneo, $participantes);
+        self::formato($torneo['formato_codigo'])->generarPrimeraRonda($torneo, $competidores);
+        $participantes = Participante::delTorneo((int) $torneo['id']);
         Auditoria::registrar($usuarioId, 'iniciar_torneo', 'torneos', (int) $torneo['id'], count($participantes) . ' participantes');
+        Notificacion::porTorneoIniciado($torneo, $participantes);
 
         // Defensivo: en la inmensa mayoría de los casos la ronda 1 recién
         // creada todavía tiene enfrentamientos pendientes, pero si algún
@@ -47,7 +55,7 @@ class Competencia
      * formato la usa), y si con este resultado la ronda queda completa,
      * la cierra y avanza a la siguiente o finaliza el torneo.
      */
-    public static function registrarResultado(array $torneo, array $enfrentamiento, float $puntaje1, float $puntaje2, int $usuarioId): void
+    public static function registrarResultado(array $torneo, array $enfrentamiento, float $puntaje1, float $puntaje2, int $usuarioId, string $motivo = 'normal'): void
     {
         if ($torneo['estado'] !== 'en_curso') {
             throw new RuntimeException('El torneo no está en curso.');
@@ -63,6 +71,25 @@ class Competencia
         if ($puntaje1 == $puntaje2 && !$formato->permiteEmpate()) {
             throw new RuntimeException('Este formato no admite empates: tiene que haber un ganador que avance.');
         }
+
+        // Corrección: antes se aceptaba cualquier combinación de sets
+        // (por ej. 4-2 en un partido al mejor de 5), aunque esa
+        // disciplina ya no pudiera seguir jugándose en ese punto. Un
+        // resultado de "sets" válido es aquel donde alguno de los dos
+        // llegó exactamente a los sets que hacen falta para ganar
+        // (tipos_torneo.sets_para_ganar) y el otro se quedó por debajo.
+        if ($torneo['formato_resultado'] === 'sets') {
+            $setsParaGanar = (int) ($torneo['sets_para_ganar'] ?? 0);
+            $mayor = max($puntaje1, $puntaje2);
+            $menor = min($puntaje1, $puntaje2);
+            if ($setsParaGanar < 1 || $mayor != $setsParaGanar || $menor >= $setsParaGanar) {
+                throw new RuntimeException(
+                    "Ese resultado no es válido para esta disciplina: se juega al mejor de "
+                    . (2 * $setsParaGanar - 1) . " sets, así que alguno de los dos tiene que llegar a {$setsParaGanar}"
+                    . " y el otro quedar por debajo."
+                );
+            }
+        }
         $ganadorId = match (true) {
             $puntaje1 > $puntaje2 => $p1,
             $puntaje2 > $puntaje1 => $p2,
@@ -74,6 +101,7 @@ class Competencia
             'puntaje_participante1' => $puntaje1,
             'puntaje_participante2' => $puntaje2,
             'ganador_id'            => $ganadorId,
+            'motivo'                => $motivo,
             'cargado_por'           => $usuarioId,
         ]);
         Enfrentamiento::update((int) $enfrentamiento['id'], ['estado' => 'jugado']);
@@ -132,10 +160,23 @@ class Competencia
         );
     }
 
-    /** Cantidad total de rondas que va a tener (o tuvo) el torneo, según su formato y su cantidad de participantes activos. Uso presentacional (nombrar rondas). */
+    /** Cantidad total de rondas que va a tener (o tuvo) el torneo, según su formato y su cantidad de competidores activos (equipos si es de equipo, participantes si es individual). Uso presentacional (nombrar rondas). */
     public static function totalRondas(array $torneo): int
     {
-        return self::formato($torneo['formato_codigo'])->totalRondas(Participante::cantidadActivos((int) $torneo['id']));
+        $cantidad = Participante::cantidadCompetidoresActivos((int) $torneo['id'], self::esDeEquipo($torneo));
+        return self::formato($torneo['formato_codigo'])->totalRondas($cantidad);
+    }
+
+    /** ¿Este torneo es de una disciplina de equipo? (tipos_torneo.modalidad, ver Torneo::porCodigoPublico()). */
+    public static function esDeEquipo(array $torneo): bool
+    {
+        return ($torneo['modalidad'] ?? 'individual') === 'equipo';
+    }
+
+    /** ¿Este torneo admite que un enfrentamiento termine en empate? Uso presentacional (el formulario de resultado tipo "decisión"). */
+    public static function permiteEmpate(array $torneo): bool
+    {
+        return self::formato($torneo['formato_codigo'])->permiteEmpate();
     }
 
     private static function formato(string $codigo): FormatoInterface

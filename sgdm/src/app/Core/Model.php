@@ -76,7 +76,7 @@ abstract class Model
              . ' VALUES (' . implode(', ', $placeholders) . ')';
 
         $stmt = static::db()->prepare($sql);
-        $stmt->execute($data);
+        $stmt->execute(self::normalizarValores($data));
 
         return (int) static::db()->lastInsertId();
     }
@@ -88,7 +88,22 @@ abstract class Model
 
         $data['__id'] = $id;
         $stmt = static::db()->prepare($sql);
-        return $stmt->execute($data);
+        return $stmt->execute(self::normalizarValores($data));
+    }
+
+    /**
+     * PDOStatement::execute(array) trata cada valor del array como
+     * string salvo que se indique lo contrario — y PHP castea `false` a
+     * '' (cadena vacía), no a '0', lo que revienta cualquier columna
+     * booleana o numérica al guardar false (bug real encontrado al
+     * agregar el primer campo BOOLEAN que se setea en false: ver
+     * usuarios.permite_agregado_directo). Se normaliza acá, una sola
+     * vez, para que ningún Model concreto tenga que acordarse de
+     * castear a mano cada vez que guarda un booleano.
+     */
+    private static function normalizarValores(array $data): array
+    {
+        return array_map(fn ($v) => is_bool($v) ? (int) $v : $v, $data);
     }
 
     public static function delete($id): bool

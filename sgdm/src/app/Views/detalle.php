@@ -35,6 +35,20 @@
 
     <?php require __DIR__ . '/partials/mensajes.php'; ?>
 
+    <?php if ($debeAceptarReglas): ?>
+      <!-- RF: quien participa tiene que leer y aceptar las reglas antes de poder ver el resto del torneo -->
+      <section class="container">
+        <div class="card reglas-gate">
+          <h2 class="display">Antes de continuar, leé las reglas de este torneo</h2>
+          <p class="reglas-gate-texto"><?= nl2br(htmlspecialchars($torneo['reglas'])) ?></p>
+          <form method="post" action="/torneos/<?= htmlspecialchars($torneo['codigo_publico']) ?>/aceptar-reglas">
+            <?= Csrf::field() ?>
+            <button type="submit" class="btn btn-primary btn-block">Acepto las reglas</button>
+          </form>
+        </div>
+      </section>
+    <?php else: ?>
+
     <?php if ($historial): ?>
       <!-- Resultado final del torneo (RF: historial y estadísticas al finalizar) -->
       <section class="container">
@@ -79,15 +93,16 @@
     <?php if ($puedeGestionar && $torneo['estado'] === 'inscripcion'): ?>
       <section class="container">
         <div class="card iniciar-torneo-card">
-          <?php if ($cantidadActiva >= 2): ?>
-            <p>Ya se puede iniciar la competencia: se va a armar el calendario de enfrentamientos con <?= (int) $cantidadActiva ?> participantes anotados.</p>
+          <?php $unidadCompetidores = Competencia::esDeEquipo($torneo) ? 'equipos' : 'participantes'; ?>
+          <?php if ($cantidadCompetidores >= 2): ?>
+            <p>Ya se puede iniciar la competencia: se va a armar el calendario de enfrentamientos con <?= (int) $cantidadCompetidores ?> <?= $unidadCompetidores ?> anotados.</p>
             <form method="post" action="/torneos/<?= htmlspecialchars($torneo['codigo_publico']) ?>/iniciar"
                   onsubmit="return confirm('¿Iniciar el torneo? Ya no se van a poder anotar más participantes.');">
               <?= Csrf::field() ?>
               <button type="submit" class="btn btn-primary btn-block">Iniciar torneo</button>
             </form>
           <?php else: ?>
-            <p>Hacen falta al menos 2 participantes anotados para iniciar el torneo (hay <?= (int) $cantidadActiva ?>).</p>
+            <p>Hacen falta al menos 2 <?= $unidadCompetidores ?> anotados para iniciar el torneo (hay <?= (int) $cantidadCompetidores ?>).</p>
           <?php endif; ?>
         </div>
       </section>
@@ -117,25 +132,80 @@
             </div>
             <div class="matches-list">
               <?php foreach ($bloque['enfrentamientos'] as $e): ?>
+                <?php
+                  // Corrección post-revisión: en una disciplina de equipo el
+                  // cruce se muestra por equipo (p1_equipo/p2_equipo, ver
+                  // Enfrentamiento::deLaRonda()), no por la persona que quedó
+                  // como representante de ese equipo en la fila.
+                  $p1Display = $e['p1_equipo'] ?? ($e['p1_nombre'] . ' ' . $e['p1_apellido']);
+                  $p2Display = $e['participante2_id']
+                      ? ($e['p2_equipo'] ?? ($e['p2_nombre'] . ' ' . $e['p2_apellido']))
+                      : null;
+                  $setsParaGanar = (int) ($torneo['sets_para_ganar'] ?? 0);
+                ?>
                 <div class="card match-row">
                   <div class="match-players">
-                    <span class="player-name"><?= htmlspecialchars($e['p1_nombre'] . ' ' . $e['p1_apellido']) ?></span>
+                    <span class="player-name"><?= htmlspecialchars($p1Display) ?></span>
                     <span class="match-vs">vs</span>
-                    <span class="player-name"><?= $e['p2_nombre'] ? htmlspecialchars($e['p2_nombre'] . ' ' . $e['p2_apellido']) : 'Libre' ?></span>
+                    <span class="player-name"><?= $p2Display ? htmlspecialchars($p2Display) : 'Libre' ?></span>
                   </div>
 
                   <?php if ($e['estado'] === 'jugado'): ?>
-                    <span class="tag tag-cerrado">Resultado: <?= htmlspecialchars(Presentacion::numero($e['puntaje_participante1'])) ?>–<?= htmlspecialchars(Presentacion::numero($e['puntaje_participante2'])) ?></span>
+                    <span class="tag tag-cerrado"><?= htmlspecialchars(Presentacion::resultadoTexto($e, $torneo['formato_resultado'])) ?></span>
                   <?php elseif ($e['estado'] === 'walkover'): ?>
                     <span class="tag tag-en-curso">Pase directo</span>
                   <?php elseif ($puedeGestionar && $ronda['estado'] === 'abierta'): ?>
-                    <form method="post" action="/torneos/<?= htmlspecialchars($torneo['codigo_publico']) ?>/enfrentamientos/<?= (int) $e['id'] ?>/resultado" class="result-form">
-                      <?= Csrf::field() ?>
-                      <input type="number" step="0.01" name="puntaje1" class="input input-score" required aria-label="Puntaje de <?= htmlspecialchars($e['p1_nombre']) ?>">
-                      <span class="result-form-sep">–</span>
-                      <input type="number" step="0.01" name="puntaje2" class="input input-score" required aria-label="Puntaje de <?= htmlspecialchars($e['p2_nombre']) ?>">
-                      <button type="submit" class="btn btn-secondary btn-sm">Cargar</button>
-                    </form>
+                    <?php $accionResultado = "/torneos/" . htmlspecialchars($torneo['codigo_publico']) . "/enfrentamientos/" . (int) $e['id'] . "/resultado"; ?>
+                    <?php if ($torneo['formato_resultado'] === 'decision'): ?>
+                      <form method="post" action="<?= $accionResultado ?>" class="result-form result-form-decision" data-result-form>
+                        <?= Csrf::field() ?>
+                        <select name="ganador" class="select" required aria-label="Quién ganó">
+                          <option value="">¿Quién ganó?</option>
+                          <option value="p1"><?= htmlspecialchars($p1Display) ?></option>
+                          <option value="p2"><?= htmlspecialchars($p2Display) ?></option>
+                          <?php if ($permiteEmpate): ?>
+                            <option value="empate">Empate</option>
+                          <?php endif; ?>
+                        </select>
+                        <select name="motivo" class="select" aria-label="Motivo">
+                          <option value="normal">Normal</option>
+                          <option value="tiempo">Por tiempo</option>
+                          <option value="abandono">Abandono</option>
+                        </select>
+                        <button type="submit" class="btn btn-secondary btn-sm">Cargar</button>
+                      </form>
+                    <?php else: ?>
+                      <?php
+                        // Corrección: se sacó el texto "Puntaje" (en fútbol
+                        // no se juega a puntos, se juega a goles) y de paso
+                        // se sacó cualquier palabra fija en los dos formatos
+                        // -queda más limpio- dejando solo el aria-label para
+                        // lectores de pantalla. El paso pasa a ser de a 1
+                        // (antes eran centésimos) y, en formato "sets", el
+                        // input no deja cargar más sets de los que esa
+                        // disciplina llega a jugar (tipos_torneo.sets_para_ganar).
+                        $unidadSets = $torneo['formato_resultado'] === 'sets' ? 'sets ganados por' : 'goles de';
+                      ?>
+                      <form method="post" action="<?= $accionResultado ?>" class="result-form" data-result-form>
+                        <?= Csrf::field() ?>
+                        <div class="score-field">
+                          <button type="button" class="score-step" data-step="-1" data-target="puntaje1-<?= (int) $e['id'] ?>" aria-label="Restar un <?= $torneo['formato_resultado'] === 'sets' ? 'set' : 'gol' ?> a <?= htmlspecialchars($p1Display) ?>" tabindex="-1">−</button>
+                          <input type="number" step="1" min="0" <?= $setsParaGanar > 0 ? 'max="' . $setsParaGanar . '"' : '' ?>
+                                 name="puntaje1" id="puntaje1-<?= (int) $e['id'] ?>" class="input input-score" required
+                                 aria-label="<?= htmlspecialchars($unidadSets) ?> <?= htmlspecialchars($p1Display) ?>">
+                          <button type="button" class="score-step" data-step="1" data-target="puntaje1-<?= (int) $e['id'] ?>" aria-label="Sumar un <?= $torneo['formato_resultado'] === 'sets' ? 'set' : 'gol' ?> a <?= htmlspecialchars($p1Display) ?>" tabindex="-1">+</button>
+                        </div>
+                        <span class="result-form-sep">–</span>
+                        <div class="score-field">
+                          <button type="button" class="score-step" data-step="-1" data-target="puntaje2-<?= (int) $e['id'] ?>" aria-label="Restar un <?= $torneo['formato_resultado'] === 'sets' ? 'set' : 'gol' ?> a <?= htmlspecialchars($p2Display) ?>" tabindex="-1">−</button>
+                          <input type="number" step="1" min="0" <?= $setsParaGanar > 0 ? 'max="' . $setsParaGanar . '"' : '' ?>
+                                 name="puntaje2" id="puntaje2-<?= (int) $e['id'] ?>" class="input input-score" required
+                                 aria-label="<?= htmlspecialchars($unidadSets) ?> <?= htmlspecialchars($p2Display) ?>">
+                          <button type="button" class="score-step" data-step="1" data-target="puntaje2-<?= (int) $e['id'] ?>" aria-label="Sumar un <?= $torneo['formato_resultado'] === 'sets' ? 'set' : 'gol' ?> a <?= htmlspecialchars($p2Display) ?>" tabindex="-1">+</button>
+                        </div>
+                        <button type="submit" class="btn btn-secondary btn-sm">Cargar</button>
+                      </form>
+                    <?php endif; ?>
                   <?php else: ?>
                     <span class="tag tag-proximo">Pendiente</span>
                   <?php endif; ?>
@@ -159,19 +229,58 @@
             <p>Todavía no hay posiciones para mostrar.</p>
           </div>
         <?php else: ?>
+          <?php
+            // Corrección post-revisión: los puntos venían con decimales
+            // porque tabla_posiciones.puntos es DECIMAL (para no cerrarle
+            // la puerta a una disciplina que sí puntúe fraccionado, como
+            // el ajedrez), aunque acá siempre se cargan enteros — se
+            // muestran con Presentacion::numero(), que ya recorta los
+            // ".00" y solo deja decimales si de verdad los hay. También se
+            // agregan las columnas de "a favor / en contra / diferencia"
+            // (goles en fútbol, sets en pádel/vóley) que pedía el reporte,
+            // salvo en formato "decision" (ajedrez), donde no hay nada de
+            // eso para contar más allá de puntos/PG/PE/PP.
+            $esEquipoTabla   = Competencia::esDeEquipo($torneo);
+            $mostrarMarcador = $torneo['formato_resultado'] !== 'decision';
+            $prefijoMarcador = $torneo['formato_resultado'] === 'sets' ? 'S' : 'G';
+          ?>
           <div class="table-scroll card">
             <table class="standings-table">
               <thead>
-                <tr><th>#</th><th>Participante</th><th>Pts</th><th>PG</th><th>PP</th></tr>
+                <tr>
+                  <th>#</th>
+                  <th><?= $esEquipoTabla ? 'Equipo' : 'Participante' ?></th>
+                  <th>Pts</th>
+                  <th>PJ</th>
+                  <th>PG</th>
+                  <th>PE</th>
+                  <th>PP</th>
+                  <?php if ($mostrarMarcador): ?>
+                    <th><?= $prefijoMarcador ?>F</th>
+                    <th><?= $prefijoMarcador ?>C</th>
+                    <th>Dif.</th>
+                  <?php endif; ?>
+                </tr>
               </thead>
               <tbody>
                 <?php foreach ($posiciones as $i => $p): ?>
+                  <?php
+                    $partidosJugados = (int) $p['victorias'] + (int) $p['empates'] + (int) $p['derrotas'];
+                    $diferencia = (float) $p['a_favor'] - (float) $p['en_contra'];
+                  ?>
                   <tr>
                     <td><?= $i + 1 ?></td>
-                    <td><?= htmlspecialchars($p['nombre'] . ' ' . $p['apellido']) ?></td>
-                    <td><?= htmlspecialchars((string) $p['puntos']) ?></td>
+                    <td><?= htmlspecialchars($p['equipo_nombre'] ?? ($p['nombre'] . ' ' . $p['apellido'])) ?></td>
+                    <td><?= Presentacion::numero($p['puntos']) ?></td>
+                    <td><?= $partidosJugados ?></td>
                     <td><?= (int) $p['victorias'] ?></td>
+                    <td><?= (int) $p['empates'] ?></td>
                     <td><?= (int) $p['derrotas'] ?></td>
+                    <?php if ($mostrarMarcador): ?>
+                      <td><?= Presentacion::numero($p['a_favor']) ?></td>
+                      <td><?= Presentacion::numero($p['en_contra']) ?></td>
+                      <td><?= ($diferencia > 0 ? '+' : '') . Presentacion::numero($diferencia) ?></td>
+                    <?php endif; ?>
                   </tr>
                 <?php endforeach; ?>
               </tbody>
@@ -187,6 +296,60 @@
       </section>
     <?php endif; ?>
 
+    <!-- Reglas: siempre accesibles para cualquiera (RF) -->
+    <section class="container">
+      <div class="section-heading">
+        <h2 class="display">Reglas</h2>
+      </div>
+      <?php if (!empty($torneo['reglas'])): ?>
+        <div class="card reglas-card"><p><?= nl2br(htmlspecialchars($torneo['reglas'])) ?></p></div>
+      <?php else: ?>
+        <div class="card empty-state"><p>El organizador todavía no escribió las reglas de este torneo.</p></div>
+      <?php endif; ?>
+
+      <?php if ($puedeGestionar): ?>
+        <form method="post" action="/torneos/<?= htmlspecialchars($torneo['codigo_publico']) ?>/reglas" class="card reglas-form">
+          <?= Csrf::field() ?>
+          <div class="field">
+            <label for="reglas">Redactar o actualizar las reglas</label>
+            <textarea id="reglas" name="reglas" class="input" rows="5" maxlength="4000"><?= htmlspecialchars($torneo['reglas'] ?? '') ?></textarea>
+            <span class="field-hint">A quien se anote y todavía no las haya aceptado, se las vamos a mostrar antes de dejarlo ver el resto del torneo.</span>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-block">Guardar reglas</button>
+        </form>
+      <?php endif; ?>
+    </section>
+
+    <!-- Avisos del organizador (RF: cartelera + dispara notificaciones a los participantes) -->
+    <section class="container">
+      <div class="section-heading">
+        <h2 class="display">Avisos</h2>
+      </div>
+      <?php if (empty($avisos)): ?>
+        <div class="card empty-state"><p>Todavía no hay avisos publicados.</p></div>
+      <?php else: ?>
+        <div class="avisos-list">
+          <?php foreach ($avisos as $a): ?>
+            <div class="card aviso-row">
+              <p class="aviso-mensaje"><?= nl2br(htmlspecialchars($a['mensaje'])) ?></p>
+              <p class="aviso-fecha"><?= htmlspecialchars(date('d/m/Y H:i', strtotime($a['creado_en']))) ?></p>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+
+      <?php if ($puedeGestionar): ?>
+        <form method="post" action="/torneos/<?= htmlspecialchars($torneo['codigo_publico']) ?>/avisos" class="card">
+          <?= Csrf::field() ?>
+          <div class="field">
+            <label for="mensaje">Publicar un aviso nuevo</label>
+            <textarea id="mensaje" name="mensaje" class="input" rows="3" maxlength="500" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-block">Publicar aviso</button>
+        </form>
+      <?php endif; ?>
+    </section>
+
     <?php if ($puedeGestionar): ?>
       <section class="container organizer-actions">
         <div class="section-heading">
@@ -198,12 +361,15 @@
       </section>
     <?php endif; ?>
 
+    <?php endif; // fin del if ($debeAceptarReglas) ?>
+
   </main>
 
   <div id="footer-mount"></div>
 
   <?php require __DIR__ . '/partials/user-context.php'; ?>
   <script src="/js/nav.js"></script>
+  <script src="/js/detalle.js"></script>
   <script src="/js/footer.js"></script>
 </body>
 </html>

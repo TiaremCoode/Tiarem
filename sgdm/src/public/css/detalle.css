@@ -34,8 +34,42 @@
 .match-vs { color: var(--color-plata-tenue); font-size: var(--fs-caption); font-weight: 500; }
 
 /* Carga de resultado en línea, dentro de un match-row */
-.result-form { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.input-score { width: 4.5rem; text-align: center; padding: 0.5rem; }
+.result-form { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+
+/* Corrección post-revisión: se reemplazan las flechitas nativas del
+   input number (chiquitas, desprolijas y que subían de a 0.01 por el
+   step anterior) por dos botones +/- propios, más grandes y con un
+   tamaño de toque cómodo en celular, a los costados del campo — el
+   campo en sí queda centrado en la fila en vez de pegado a un borde. */
+.score-field { display: flex; align-items: center; gap: 0.3rem; }
+.input-score {
+  width: 3rem;
+  text-align: center;
+  padding: 0.5rem 0.25rem;
+  -moz-appearance: textfield;
+}
+.input-score::-webkit-outer-spin-button,
+.input-score::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.score-step {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--color-borde);
+  background: var(--color-superficie);
+  color: var(--color-texto);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.score-step:hover { border-color: var(--color-plata-tenue); }
+.score-step:active { transform: scale(0.94); }
 .result-form-sep { color: var(--color-plata-tenue); font-weight: 600; }
 
 @media (min-width: 560px) {
@@ -60,7 +94,7 @@
 /* Tabla de posiciones */
 .table-scroll { overflow-x: auto; padding: 0; margin-bottom: var(--space-xl); }
 
-.standings-table { width: 100%; border-collapse: collapse; min-width: 420px; }
+.standings-table { width: 100%; border-collapse: collapse; min-width: 620px; }
 
 .standings-table th,
 .standings-table td {
@@ -85,3 +119,31 @@
 .organizer-actions { margin-bottom: var(--space-lg); }
 /* .organizer-actions-grid ahora vive en base.css, compartida con el
    panel de administración del perfil. */
+
+/* Formulario de resultado tipo "decisión" (ajedrez y similares): dos
+   selects en vez de dos números — mismo contenedor .result-form,
+   Flexbox ya envuelve en mobile por el min-width de los selects. */
+.result-form-decision { flex-wrap: wrap; }
+.result-form-decision .select { min-width: 9rem; flex: 1 1 9rem; }
+
+/* Reglas */
+.reglas-card { margin-bottom: var(--space-md); white-space: pre-line; }
+.reglas-form { display: flex; flex-direction: column; gap: var(--space-sm); margin-bottom: var(--space-xl); }
+.reglas-form textarea { resize: vertical; }
+
+.reglas-gate {
+  max-width: 560px;
+  margin: var(--space-lg) auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+.reglas-gate h2 { font-size: var(--fs-h2); margin: 0; }
+.reglas-gate-texto { text-align: left; white-space: pre-line; color: var(--color-texto); }
+
+/* Avisos */
+.avisos-list { display: flex; flex-direction: column; gap: var(--space-sm); margin-bottom: var(--space-md); }
+.aviso-row { display: flex; flex-direction: column; gap: 0.3rem; }
+.aviso-mensaje { margin: 0; white-space: pre-line; }
+.aviso-fecha { margin: 0; font-size: var(--fs-caption); color: var(--color-plata-tenue); }

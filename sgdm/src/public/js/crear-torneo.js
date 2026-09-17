@@ -37,6 +37,36 @@ document.addEventListener('DOMContentLoaded', () => {
     errorBox.hidden = true;
   }
 
+  // Corrección post-revisión: en una disciplina de equipo (fútbol,
+  // pádel, etc.) lo que se limita no es la cantidad de jugadores sino
+  // la cantidad de equipos — el paso 3 del asistente ahora avisa de eso
+  // según la disciplina elegida en el paso 2, en vez de hablar siempre
+  // de "participantes".
+  const tipoTorneoSelect = document.getElementById('tipo-torneo');
+  const maxParticipantesInput = document.getElementById('max-participantes');
+  const step3Title = document.querySelector('[data-step3-title]');
+  const step3Label = document.querySelector('[data-step3-label]');
+  const step3Hint = document.querySelector('[data-step3-hint]');
+
+  function actualizarPaso3PorModalidad() {
+    if (!tipoTorneoSelect) return;
+    const opcion = tipoTorneoSelect.options[tipoTorneoSelect.selectedIndex];
+    const esEquipo = opcion && opcion.dataset.modalidad === 'equipo';
+    if (step3Title) step3Title.textContent = esEquipo ? 'Cantidad de equipos' : 'Cantidad de participantes';
+    if (step3Label) step3Label.textContent = esEquipo ? 'Número máximo de equipos' : 'Número máximo de participantes';
+    if (maxParticipantesInput) maxParticipantesInput.placeholder = esEquipo ? 'Ej: 8' : 'Ej: 16';
+    if (step3Hint) {
+      step3Hint.textContent = esEquipo
+        ? 'Es el máximo de equipos, no de jugadores. Podés cerrar la inscripción antes de llegar al máximo.'
+        : 'Podés cerrar la inscripción antes de llegar al máximo.';
+    }
+  }
+
+  if (tipoTorneoSelect) {
+    tipoTorneoSelect.addEventListener('change', actualizarPaso3PorModalidad);
+    actualizarPaso3PorModalidad();
+  }
+
   function showDone(codigo, url) {
     form.hidden = true;
     document.getElementById('steps-indicator').hidden = true;

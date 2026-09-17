@@ -51,6 +51,11 @@ CREATE TABLE usuarios (
     password_hash   VARCHAR(255) NOT NULL,            -- toda cuenta se crea con contraseña propia
     rol_id          TINYINT UNSIGNED NOT NULL,
     estado          ENUM('activo','suspendido') NOT NULL DEFAULT 'activo',
+    -- TRUE (por defecto): cualquier organizador te puede sumar a un
+    -- torneo con solo tu ID o correo, como ya funcionaba. FALSE: en vez
+    -- de sumarte directo, te llega una invitación a Notificaciones para
+    -- aceptar o rechazar.
+    permite_agregado_directo BOOLEAN NOT NULL DEFAULT TRUE,
     creado_en       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_en  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     ultimo_acceso   DATETIME     NULL,
@@ -84,6 +89,31 @@ CREATE TABLE tipos_torneo (
     modalidad                   ENUM('individual','equipo') NOT NULL DEFAULT 'individual',
     jugadores_por_equipo_min    SMALLINT UNSIGNED NULL,
     jugadores_por_equipo_max    SMALLINT UNSIGNED NULL,
+    -- Determina qué formulario de carga de resultado corresponde a esta
+    -- disciplina (RF: "que el puntaje se adapte al deporte" — acotado a
+    -- la carga de resultado, no a una simulación de reglas de cada juego):
+    -- 'simple'   -> dos números sueltos, como ahora (fútbol, truco, etc.)
+    -- 'sets'     -> "sets ganados" por cada uno, en vez de un puntaje que
+    --               se pueda confundir con goles (pádel, vóley)
+    -- 'decision' -> elegís quién ganó (o empate) y opcionalmente el
+    --               motivo (por tiempo / abandono), sin números (ajedrez)
+    formato_resultado           ENUM('simple','sets','decision') NOT NULL DEFAULT 'simple',
+    -- Solo aplica cuando formato_resultado = 'sets': cuántos sets hay que
+    -- ganar para cerrar el partido (no el total de sets jugados). Ej:
+    -- pádel se juega al mejor de 3 -> 2; tenis y vóley al mejor de 5 -> 3.
+    -- Corrección post-revisión: antes la carga de resultado aceptaba
+    -- cualquier combinación de sets (incluso más de los que ese deporte
+    -- llega a jugar realmente, ej. 4-2). Ahora Competencia::registrarResultado()
+    -- usa este valor para exigir que el resultado cargado sea uno que
+    -- de verdad pueda darse en un partido de esa disciplina.
+    sets_para_ganar             SMALLINT UNSIGNED NULL,
+    -- lo mismo que jugadores_por_equipo: nulo si no es de formato 'sets',
+    -- obligatorio si lo es.
+    CONSTRAINT chk_tipo_torneo_sets_para_ganar CHECK (
+        (formato_resultado <> 'sets' AND sets_para_ganar IS NULL)
+        OR
+        (formato_resultado = 'sets' AND sets_para_ganar IS NOT NULL AND sets_para_ganar >= 1)
+    ),
 
     CONSTRAINT chk_tipo_torneo_rango_equipo CHECK (
         (modalidad = 'individual' AND jugadores_por_equipo_min IS NULL AND jugadores_por_equipo_max IS NULL)
@@ -123,6 +153,11 @@ CREATE TABLE torneos (
     modulo_competencia_id   TINYINT UNSIGNED NOT NULL,
     organizador_id          INT UNSIGNED NOT NULL,
     max_participantes       SMALLINT UNSIGNED NOT NULL,
+    -- Texto libre que carga el organizador; siempre visible públicamente
+    -- en el detalle del torneo. NULL = todavía no escribió ninguna (no
+    -- se le exige a nadie "aceptar" nada hasta que el organizador la
+    -- redacte — ver participantes.acepto_reglas).
+    reglas                  TEXT NULL,
     estado                  ENUM('inscripcion','en_curso','finalizado','cancelado')
                                  NOT NULL DEFAULT 'inscripcion',
     fecha_creacion          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -195,6 +230,10 @@ CREATE TABLE participantes (
     usuario_id          INT UNSIGNED NOT NULL,
     equipo_id           INT UNSIGNED NULL,
     estado              ENUM('activo','eliminado','retirado') NOT NULL DEFAULT 'activo',
+    -- Si el torneo tiene reglas escritas, se le muestran obligatoriamente
+    -- a cada participante hasta que las acepte (RF: "deba leer las
+    -- reglas apenas entre... y tenga que tocar aceptar para continuar").
+    acepto_reglas       BOOLEAN NOT NULL DEFAULT FALSE,
     fecha_inscripcion   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_participantes_torneo
@@ -273,6 +312,10 @@ CREATE TABLE resultados (
     puntaje_participante1   DECIMAL(6,2) NOT NULL DEFAULT 0,
     puntaje_participante2   DECIMAL(6,2) NULL,
     ganador_id              INT UNSIGNED NULL,   -- NULL = empate
+    -- Motivo del cierre del enfrentamiento. Se elige a mano únicamente en
+    -- el formulario 'decision' (ver tipos_torneo.formato_resultado); en
+    -- 'simple'/'sets' queda 'normal' por defecto sin pedirlo.
+    motivo                  ENUM('normal','abandono','tiempo') NOT NULL DEFAULT 'normal',
     cargado_por             INT UNSIGNED NULL,   -- NULL = resuelto por el sistema (pase directo / bye), no por una persona
     fecha_carga             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -353,6 +396,78 @@ CREATE TABLE torneos_historial (
     CONSTRAINT fk_historial_invicto        FOREIGN KEY (invicto_participante_id)        REFERENCES participantes(id) ON UPDATE CASCADE ON DELETE SET NULL,
     CONSTRAINT fk_historial_menos_derrotas FOREIGN KEY (menos_derrotas_participante_id) REFERENCES participantes(id) ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- avisos (1:N con torneos)
+-- Cartelera de anuncios del organizador sobre SU torneo (RF: "apartado de
+-- avisos donde el organizador puede actualizar sobre cosas del torneo").
+-- A diferencia de una notificación (que es privada, por usuario, y se
+-- puede marcar como leída), un aviso es público y permanente: cualquiera
+-- que entre al torneo lo puede leer, igual que las reglas. Publicar uno
+-- ADEMÁS genera una notificación para cada participante activo (ver
+-- Notificacion::porAviso()) — el aviso en sí es la fuente, la
+-- notificación es solo el "che, hay algo nuevo para leer".
+-- ----------------------------------------------------------------------------
+CREATE TABLE avisos (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    torneo_id   INT UNSIGNED NOT NULL,
+    mensaje     VARCHAR(500) NOT NULL,
+    creado_en   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_avisos_torneo
+        FOREIGN KEY (torneo_id) REFERENCES torneos(id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_avisos_torneo ON avisos(torneo_id, creado_en DESC);
+
+-- ----------------------------------------------------------------------------
+-- notificaciones
+-- Bandeja de entrada privada de cada usuario (RF: "apartado de
+-- notificaciones"). Un solo tipo de fila para los cinco casos que pide
+-- la letra, distinguidos por `tipo`:
+--   invitacion          -> alguien te quiere sumar a un torneo y tenés
+--                          `permite_agregado_directo` en falso; es la
+--                          única accionable (estado_invitacion).
+--   torneo_iniciado     -> un torneo tuyo arrancó.
+--   aviso_organizador   -> el organizador publicó un aviso nuevo.
+--   union_torneo        -> (al organizador) alguien se sumó a tu torneo.
+--   torneo_completo     -> (al organizador) tu torneo llegó al máximo.
+-- equipo_id solo se completa en invitaciones a disciplinas de equipo (se
+-- resuelve o se crea el equipo al invitar; queda guardado para recién
+-- usarlo si la persona acepta — ver Notificacion::aceptarInvitacion()).
+-- ----------------------------------------------------------------------------
+CREATE TABLE notificaciones (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    usuario_id          INT UNSIGNED NOT NULL,
+    torneo_id           INT UNSIGNED NULL,
+    tipo                ENUM('invitacion','torneo_iniciado','aviso_organizador','union_torneo','torneo_completo') NOT NULL,
+    mensaje             VARCHAR(280) NOT NULL,
+    equipo_id           INT UNSIGNED NULL,
+    estado_invitacion   ENUM('pendiente','aceptada','rechazada') NULL,
+    leida               BOOLEAN NOT NULL DEFAULT FALSE,
+    creado_en           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_notif_usuario
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+
+    CONSTRAINT fk_notif_torneo
+        FOREIGN KEY (torneo_id) REFERENCES torneos(id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+
+    CONSTRAINT fk_notif_equipo
+        FOREIGN KEY (equipo_id) REFERENCES equipos(id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+
+    CONSTRAINT chk_notif_invitacion CHECK (
+        (tipo = 'invitacion' AND estado_invitacion IS NOT NULL)
+        OR
+        (tipo <> 'invitacion' AND estado_invitacion IS NULL)
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_notif_usuario ON notificaciones(usuario_id, leida, creado_en DESC);
 
 -- ----------------------------------------------------------------------------
 -- auditoria

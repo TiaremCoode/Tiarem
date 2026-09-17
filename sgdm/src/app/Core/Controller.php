@@ -18,6 +18,7 @@ abstract class Controller
     {
         extract($data, EXTR_SKIP);
         $usuarioActual = Auth::user(); // disponible en toda vista, para la navegación
+        $notificacionesNoLeidas = $usuarioActual ? Notificacion::cantidadNoLeidas((int) $usuarioActual['id']) : 0;
         require __DIR__ . "/../Views/{$view}.php";
     }
 

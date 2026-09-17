@@ -32,6 +32,12 @@ $router->get('/torneos/crear', [TorneoController::class, 'createForm']);
 $router->post('/api/torneos', [TorneoController::class, 'store']);
 $router->get('/perfil', [PerfilController::class, 'show']);
 $router->post('/perfil', [PerfilController::class, 'update']);
+$router->post('/perfil/privacidad', [PerfilController::class, 'actualizarPrivacidad']);
+
+// -------- Módulo de notificaciones (cada quien ve y responde solo las suyas) --------
+$router->get('/notificaciones', [NotificacionController::class, 'index']);
+$router->post('/notificaciones/{id}/aceptar', [NotificacionController::class, 'aceptar']);
+$router->post('/notificaciones/{id}/rechazar', [NotificacionController::class, 'rechazar']);
 
 // -------- Módulo de participantes y equipos (solo organizador/admin gestionan) --------
 $router->get('/torneos/{codigo}/participantes', [ParticipanteController::class, 'index']);
@@ -41,6 +47,11 @@ $router->post('/torneos/{codigo}/participantes/{id}/eliminar', [ParticipanteCont
 // -------- Módulo de resultados / competencia (solo organizador/admin gestionan) --------
 $router->post('/torneos/{codigo}/iniciar', [CompetenciaController::class, 'iniciar']);
 $router->post('/torneos/{codigo}/enfrentamientos/{id}/resultado', [CompetenciaController::class, 'resultado']);
+
+// -------- Reglas y avisos del torneo (leer: cualquiera; publicar: organizador/admin) --------
+$router->post('/torneos/{codigo}/reglas', [TorneoController::class, 'actualizarReglas']);
+$router->post('/torneos/{codigo}/aceptar-reglas', [TorneoController::class, 'aceptarReglas']);
+$router->post('/torneos/{codigo}/avisos', [AvisoController::class, 'store']);
 
 // -------- Pública, con parámetro (va después de las rutas fijas de /torneos/...) --------
 $router->get('/torneos/{codigo}', [TorneoController::class, 'show']);

@@ -25,7 +25,11 @@
       <h1 class="display torneo-title">Participantes</h1>
       <p class="torneo-meta">
         <?= htmlspecialchars($torneo['nombre']) ?> ·
-        <?= (int) $cantidadActiva ?>/<?= (int) $torneo['max_participantes'] ?> anotados ·
+        <?php if (TipoTorneo::esDeEquipo($tipoTorneo)): ?>
+          <?= (int) $cantidadEquipos ?>/<?= (int) $torneo['max_participantes'] ?> equipos ·
+        <?php else: ?>
+          <?= (int) $cantidadActiva ?>/<?= (int) $torneo['max_participantes'] ?> anotados ·
+        <?php endif; ?>
         <?= TipoTorneo::esDeEquipo($tipoTorneo) ? 'Por equipos' : 'Individual' ?>
       </p>
     </div>
@@ -38,10 +42,18 @@
         <h2 class="display">Anotar participante</h2>
       </div>
 
+      <?php
+        $esEquipo = TipoTorneo::esDeEquipo($tipoTorneo);
+        $cupoEquiposLleno = $esEquipo && $cantidadEquipos >= (int) $torneo['max_participantes'];
+        $sinNadaQueOfrecer = $esEquipo && $cupoEquiposLleno && empty($resumenEquipos);
+        $sinCupoIndividual = !$esEquipo && $cantidadActiva >= (int) $torneo['max_participantes'];
+      ?>
       <?php if ($torneo['estado'] !== 'inscripcion'): ?>
         <div class="card empty-state"><p>Este torneo ya no está en etapa de inscripción.</p></div>
-      <?php elseif ($cantidadActiva >= (int) $torneo['max_participantes']): ?>
+      <?php elseif ($sinCupoIndividual): ?>
         <div class="card empty-state"><p>Ya se llegó al máximo de participantes para este torneo.</p></div>
+      <?php elseif ($sinNadaQueOfrecer): ?>
+        <div class="card empty-state"><p>Ya se llegó al máximo de equipos para este torneo.</p></div>
       <?php else: ?>
         <form class="card" method="post" action="/torneos/<?= htmlspecialchars($torneo['codigo_publico']) ?>/participantes">
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Csrf::token()) ?>">
@@ -52,21 +64,27 @@
             <span class="field-hint">Tiene que estar registrada en el sistema. Si todavía no tiene cuenta, pedile que se registre primero.</span>
           </div>
 
-          <?php if (TipoTorneo::esDeEquipo($tipoTorneo)): ?>
-            <div class="field">
-              <label for="equipo_id">Equipo existente</label>
-              <select id="equipo_id" name="equipo_id" class="select">
-                <option value="0">— Elegir uno nuevo abajo —</option>
-                <?php foreach ($resumenEquipos as $r): ?>
-                  <option value="<?= (int) $r['equipo']['id'] ?>"><?= htmlspecialchars($r['equipo']['nombre']) ?> (<?= $r['cantidad'] ?>)</option>
-                <?php endforeach; ?>
-              </select>
-            </div>
-            <div class="field">
-              <label for="equipo_nuevo_nombre">O nombre de un equipo nuevo</label>
-              <input id="equipo_nuevo_nombre" name="equipo_nuevo_nombre" class="input" type="text" placeholder="Ej: Los Tigres" maxlength="100">
-              <span class="field-hint">Esta disciplina se juega en equipos de <?= (int) $tipoTorneo['jugadores_por_equipo_min'] ?> a <?= (int) $tipoTorneo['jugadores_por_equipo_max'] ?> integrantes.</span>
-            </div>
+          <?php if ($esEquipo): ?>
+            <?php if (!empty($resumenEquipos)): ?>
+              <div class="field">
+                <label for="equipo_id">Equipo existente</label>
+                <select id="equipo_id" name="equipo_id" class="select">
+                  <option value="0">— Elegir uno nuevo abajo —</option>
+                  <?php foreach ($resumenEquipos as $r): ?>
+                    <option value="<?= (int) $r['equipo']['id'] ?>"><?= htmlspecialchars($r['equipo']['nombre']) ?> (<?= $r['cantidad'] ?>)</option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+            <?php endif; ?>
+            <?php if ($cupoEquiposLleno): ?>
+              <span class="field-hint">Ya se llegó al máximo de equipos para este torneo — todavía se puede sumar gente a los equipos ya anotados.</span>
+            <?php else: ?>
+              <div class="field">
+                <label for="equipo_nuevo_nombre">O nombre de un equipo nuevo</label>
+                <input id="equipo_nuevo_nombre" name="equipo_nuevo_nombre" class="input" type="text" placeholder="Ej: Los Tigres" maxlength="100">
+                <span class="field-hint">Esta disciplina se juega en equipos de <?= (int) $tipoTorneo['jugadores_por_equipo_min'] ?> a <?= (int) $tipoTorneo['jugadores_por_equipo_max'] ?> integrantes.</span>
+              </div>
+            <?php endif; ?>
           <?php endif; ?>
 
           <button type="submit" class="btn btn-primary btn-block">Agregar participante</button>
