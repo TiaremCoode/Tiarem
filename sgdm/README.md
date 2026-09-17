@@ -159,8 +159,11 @@ notifica a quienes siguen `activo` (`Participante::delTorneo()`).
 Con el sistema ya completo, se hizo una ronda de prueba de uso real
 (no automatizada: usando la interfaz tal como la usaría un
 organizador) que encontró un bug de lógica importante y varios
-problemas de interfaz. Se listan en el mismo orden en que se
-reportaron:
+problemas de interfaz.
+
+### Primera ronda
+
+Se listan en el mismo orden en que se reportaron:
 
 1. **Títulos pegados al borde superior en "Registro de auditoría" y
    "Mis torneos".** No era un problema de la clase `.page-head` /
@@ -286,6 +289,43 @@ reportaron:
      puntual de un equipo hizo cada gol: la letra original ya lo dejaba
      para más adelante ("aunque esta función se agrega más tarde,
      todavía no").
+
+### Segunda ronda: error de despliegue + reorden de la barra de navegación
+
+Después de probar la ronda anterior contra un entorno ya en uso (con un
+torneo real ya creado) aparecieron dos cosas más:
+
+- **`SQLSTATE[42S22]: Unknown column 'tt.sets_para_ganar'` al crear un
+  torneo y entrar a verlo.** No era un bug de código: es que
+  `01_schema.sql`/`03_seed.sql` solo se ejecutan la primera vez que el
+  volumen de MySQL está vacío (ver el comentario en
+  `docker-compose.yml`, servicio `db`) — en cualquier entorno que ya
+  tuviera el proyecto levantado de antes de agregar
+  `tipos_torneo.sets_para_ganar`, la base de datos real nunca se
+  entera de esa columna nueva por más que el `.sql` del repo ya la
+  tenga. Se agregó `db/migraciones/001_sets_para_ganar_y_tenis.sql`,
+  para aplicar ese cambio a mano, una sola vez, sobre una base que ya
+  existe y tiene datos (sin perder los torneos ya cargados) — trae las
+  instrucciones exactas en su propio encabezado. De acá en más, cada
+  cambio de esquema que se agregue después de la entrega original va a
+  necesitar su propio archivo en `db/migraciones/`, numerado en orden,
+  además de quedar reflejado en `01_schema.sql`/`03_seed.sql` para que
+  una instalación nueva de cero (por ejemplo, en el servidor final) lo
+  tenga ya incorporado sin ningún paso manual.
+- **Reorden de los accesos de la barra de navegación (desktop) y
+  campanita más chica.** `ICONS.bell`/`ICONS.gear`/`ICONS.search` son
+  SVG sin `width`/`height` propios, y nada en `nav.css` les fijaba un
+  tamaño dentro del botón circular que los contiene — así que el
+  navegador los mostraba a un tamaño mucho más grande que el botón,
+  bastante feo. Se agregó `.topbar-icon-btn svg { width: 22px; height:
+  22px }` (el mismo tamaño que ya usa el ícono del tabbar mobile). De
+  paso, en `nav.js` se sacaron los botones de texto "Mi perfil" y
+  "Cerrar sesión" del panel de escritorio: "Mi perfil" pasó a ser un
+  ícono de persona (mismo estilo que la campanita/tuerca) y "Cerrar
+  sesión" se sacó de ahí directamente, porque ya existe al final de
+  `/perfil` desde el diseño original — no hacía falta duplicarlo. El
+  orden de esa fila, de izquierda a derecha, quedó: Crear torneo →
+  Notificaciones → Ajustes → Perfil.
 
 ## Revisión de la segunda etapa (antes de pasar a esta)
 
@@ -482,6 +522,13 @@ volumen de MySQL está vacío. Para forzar que vuelvan a correr:
 docker compose down -v   # borra también el volumen de datos
 docker compose up --build
 ```
+
+Si en cambio ya tenés datos cargados que no querés perder (torneos de
+prueba, cuentas, etc.), en vez de resetear la base hay que aplicar a
+mano cada archivo nuevo que vaya apareciendo en `db/migraciones/` —
+son cambios de esquema posteriores a esta entrega, cada uno con sus
+instrucciones de uso en su propio encabezado (ver "Corrección de
+errores reportados sobre el sistema ya entregado" más arriba).
 
 ## Servidor de destino: AlmaLinux 9
 

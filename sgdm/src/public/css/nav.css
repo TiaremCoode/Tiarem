@@ -60,6 +60,14 @@
 }
 .topbar-search-btn:hover, .topbar-icon-btn:hover { background: rgba(200,205,211,0.08); }
 
+/* Corrección: estos íconos (campanita, tuerca, buscar) no tenían un
+   tamaño propio definido para su <svg> interno, así que el navegador
+   los mostraba con su tamaño por default (mucho más grande que el
+   botón circular que los contiene) — de ahí que la campanita se viera
+   grande y "fea". Mismo tamaño de ícono que ya usa el tabbar mobile. */
+.topbar-search-btn svg,
+.topbar-icon-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
+
 /* Badge de notificaciones no leídas — mismo punto rojo chico sobre el
    ícono/botón que corresponda, tanto en el tabbar como en desktop. */
 .nav-badge-wrap { position: relative; }
@@ -229,6 +237,9 @@
   .navbar-links a:hover, .navbar-links a.active { color: var(--color-texto); border-color: var(--color-plata); }
 
   .navbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-md); flex: 1; }
+  /* En desktop, el círculo de ícono queda igual de alto que los
+     botones de texto que lo acompañan (.btn-sm mide 40px de alto). */
+  .navbar-actions .topbar-icon-btn { width: 40px; height: 40px; }
 
   .page { padding-bottom: var(--space-2xl); }
 }

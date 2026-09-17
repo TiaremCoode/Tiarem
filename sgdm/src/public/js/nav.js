@@ -95,11 +95,10 @@ function renderNav(activeId) {
     </header>`;
 
   const accionesDesktop = usuario
-    ? `<a href="/notificaciones" class="topbar-icon-btn nav-badge-wrap" aria-label="Notificaciones">${ICONS.bell}${badgeHtml(noLeidas)}</a>
+    ? `<a href="/torneos/crear" class="btn btn-primary btn-sm">Crear torneo</a>
+       <a href="/notificaciones" class="topbar-icon-btn nav-badge-wrap" aria-label="Notificaciones">${ICONS.bell}${badgeHtml(noLeidas)}</a>
        <div class="ajustes-wrap">${ajustesBoton('desktop')}${ajustesPanel('desktop', usuario)}</div>
-       <a href="/perfil" class="btn btn-secondary btn-sm">Mi perfil</a>
-       <a href="/torneos/crear" class="btn btn-primary btn-sm">Crear torneo</a>
-       <a href="/logout" class="btn btn-secondary btn-sm">Cerrar sesión</a>`
+       <a href="/perfil" class="topbar-icon-btn" aria-label="Mi perfil">${ICONS.user}</a>`
     : `<a href="/login" class="btn btn-secondary btn-sm">Iniciar sesión</a>
        <a href="/registro" class="btn btn-primary btn-sm">Crear cuenta</a>`;
 
