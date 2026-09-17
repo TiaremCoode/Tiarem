@@ -44,22 +44,27 @@ class TorneoController extends Controller
             return;
         }
 
-        $rondas = Ronda::delTorneo((int) $torneo['id']);
-        $ultimaRonda = end($rondas) ?: null;
-        $enfrentamientos = $ultimaRonda ? Enfrentamiento::deLaRonda((int) $ultimaRonda['id']) : [];
-        $posiciones = TablaPosicion::delTorneo((int) $torneo['id']);
-
-        $usuarioActual = Auth::user();
-        $esOrganizador = $usuarioActual && (int) $usuarioActual['id'] === (int) $torneo['organizador_id'];
-        $esAdmin = $usuarioActual && $usuarioActual['rol_codigo'] === Roles::ADMIN_GENERAL;
+        // Todas las rondas con sus enfrentamientos (no solo la última): en
+        // eliminación directa y sistema suizo el detalle muestra el
+        // recorrido completo del torneo, más reciente primero.
+        $rondas = array_reverse(Ronda::delTorneo((int) $torneo['id']));
+        $rondasConEnfrentamientos = array_map(
+            fn ($r) => ['ronda' => $r, 'enfrentamientos' => Enfrentamiento::deLaRonda((int) $r['id'])],
+            $rondas
+        );
 
         $this->view('detalle', [
-            'torneo'          => $torneo,
-            'ultimaRonda'     => $ultimaRonda,
-            'enfrentamientos' => $enfrentamientos,
-            'posiciones'      => $posiciones,
-            'puedeGestionar'  => $esOrganizador || $esAdmin,
+            'torneo'                   => $torneo,
+            'rondasConEnfrentamientos' => $rondasConEnfrentamientos,
+            'totalRondas'              => $torneo['estado'] === 'inscripcion' ? 0 : Competencia::totalRondas($torneo),
+            'posiciones'               => TablaPosicion::delTorneo((int) $torneo['id']),
+            'historial'                => $torneo['estado'] === 'finalizado' ? TorneoHistorial::delTorneo((int) $torneo['id']) : null,
+            'cantidadActiva'           => Participante::cantidadActivos((int) $torneo['id']),
+            'puedeGestionar'           => Auth::esOrganizadorOAdmin($torneo),
+            'mensaje'                  => $_SESSION['torneo_mensaje'] ?? null,
+            'error'                    => $_SESSION['torneo_error'] ?? null,
         ]);
+        unset($_SESSION['torneo_mensaje'], $_SESSION['torneo_error']);
     }
 
     /** Formulario (asistente de 3 pasos). Requiere sesión iniciada. */

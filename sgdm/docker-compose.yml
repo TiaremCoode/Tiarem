@@ -32,7 +32,13 @@ services:
       #   01_schema.sql -> modelo relacional (DDL)
       #   02_dcl.sh     -> usuarios de base de datos restringidos (DCL)
       #   03_seed.sql   -> catálogos (roles, formatos, tipos de torneo)
-      - ./db:/docker-entrypoint-initdb.d:ro
+      # :ro,z -> además de solo-lectura, el flag "z" le pone la
+      # etiqueta SELinux compartida al contenido. En Ubuntu/Mac/Windows
+      # (sin SELinux) esta opción no hace nada; en el servidor de
+      # destino (AlmaLinux 9, SELinux enforcing por defecto) es
+      # necesaria: sin ella, MySQL no puede ni leer los scripts de
+      # ./db montados acá.
+      - ./db:/docker-entrypoint-initdb.d:ro,z
     ports:
       - "3307:3306" # solo para conectarte con un cliente MySQL externo (Workbench) en desarrollo — sacar este mapeo en producción
     networks:
@@ -64,7 +70,9 @@ services:
       APP_URL: ${APP_URL}
       APP_ENV: ${APP_ENV}
     volumes:
-      - ./src:/var/www/html
+      # "z" -> ver la nota sobre SELinux en el volumen de ./db más
+      # arriba: en AlmaLinux 9 Apache no puede leer el código sin esto.
+      - ./src:/var/www/html:z
     # Ya no publica ningún puerto al host: solo es alcanzable desde
     # adentro de red_interna, es decir, únicamente por el WAF.
     networks:

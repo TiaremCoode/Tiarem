@@ -25,6 +25,7 @@ spl_autoload_register(function (string $class): void {
     static $paths = [
         __DIR__ . '/Config/',
         __DIR__ . '/Core/',
+        __DIR__ . '/Formatos/',
         __DIR__ . '/Models/',
         __DIR__ . '/Controllers/',
     ];

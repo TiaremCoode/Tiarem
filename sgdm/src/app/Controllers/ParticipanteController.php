@@ -29,17 +29,7 @@ class ParticipanteController extends Controller
             exit;
         }
 
-        Auth::requireLogin();
-        $usuario = Auth::user();
-        $esOrganizador = (int) $usuario['id'] === (int) $torneo['organizador_id'];
-        $esAdmin = $usuario['rol_codigo'] === Roles::ADMIN_GENERAL;
-
-        if (!$esOrganizador && !$esAdmin) {
-            http_response_code(403);
-            require __DIR__ . '/../Views/errors/403.php';
-            exit;
-        }
-
+        Auth::requireOrganizadorOAdmin($torneo);
         return $torneo;
     }
 

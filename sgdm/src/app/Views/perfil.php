@@ -53,6 +53,26 @@
       <?php endif; ?>
     </section>
 
+    <?php if (!empty($titulos)): ?>
+      <section class="container">
+        <div class="section-heading">
+          <h2 class="display">Mis títulos</h2>
+        </div>
+        <div class="tournaments-list">
+          <?php foreach ($titulos as $t): ?>
+            <a class="card tournament-row" href="/torneos/<?= htmlspecialchars($t['codigo_publico']) ?>">
+              <div class="tournament-row-info">
+                <span class="tag tag-cerrado"><span class="tag-dot"></span>🏆 Campeón</span>
+                <h3><?= htmlspecialchars($t['nombre']) ?></h3>
+                <p class="tournament-meta"><?= htmlspecialchars($t['formato_nombre']) ?></p>
+              </div>
+              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+          <?php endforeach; ?>
+        </div>
+      </section>
+    <?php endif; ?>
+
     <section class="container">
       <div class="section-heading">
         <h2 class="display">Datos de la cuenta</h2>

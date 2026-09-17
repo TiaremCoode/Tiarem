@@ -273,7 +273,7 @@ CREATE TABLE resultados (
     puntaje_participante1   DECIMAL(6,2) NOT NULL DEFAULT 0,
     puntaje_participante2   DECIMAL(6,2) NULL,
     ganador_id              INT UNSIGNED NULL,   -- NULL = empate
-    cargado_por             INT UNSIGNED NOT NULL,
+    cargado_por             INT UNSIGNED NULL,   -- NULL = resuelto por el sistema (pase directo / bye), no por una persona
     fecha_carga             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_resultados_enfrentamiento
@@ -286,7 +286,7 @@ CREATE TABLE resultados (
 
     CONSTRAINT fk_resultados_cargado_por
         FOREIGN KEY (cargado_por) REFERENCES usuarios(id)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
@@ -317,6 +317,42 @@ CREATE TABLE tabla_posiciones (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE INDEX idx_posiciones_torneo ON tabla_posiciones(torneo_id, puntos DESC);
+
+-- ----------------------------------------------------------------------------
+-- torneos_historial (1:1 con torneos)
+-- RF 3ª entrega: "almacenar el historial del torneo... y estadísticas como
+-- su mejor jugador, mayor puntaje, invicto, jugador con menos derrota,
+-- tiempo de duración. Una vez finalizado el torneo". Se guarda como
+-- snapshot físico (no se recalcula al vuelo) porque estos datos ya no
+-- cambian una vez finalizado el torneo: los participantes, enfrentamientos
+-- y resultados de por sí quedan en sus tablas (nunca se borran), así que
+-- esta tabla no duplica esa información — solo fija los "ganadores" de
+-- cada estadística en el momento del cierre. "campeon" define además el
+-- título que se le atribuye al usuario en su perfil (RF: "atribuirle el
+-- título en el perfil del usuario"). El tiempo de duración no se guarda
+-- acá: se calcula desde torneos.fecha_inicio/fecha_fin, que ya están en
+-- 3FN en la tabla que corresponde.
+-- ----------------------------------------------------------------------------
+CREATE TABLE torneos_historial (
+    id                              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    torneo_id                       INT UNSIGNED NOT NULL UNIQUE,
+    campeon_participante_id         INT UNSIGNED NULL,  -- ganador del torneo según su formato
+    mejor_jugador_participante_id   INT UNSIGNED NULL,  -- más victorias acumuladas
+    mayor_puntaje_participante_id   INT UNSIGNED NULL,  -- mayor suma de puntaje anotado en sus partidos
+    invicto_participante_id         INT UNSIGNED NULL,  -- sin derrotas; NULL si nadie quedó invicto
+    menos_derrotas_participante_id  INT UNSIGNED NULL,  -- menor cantidad de derrotas del torneo
+    creado_en                       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_historial_torneo
+        FOREIGN KEY (torneo_id) REFERENCES torneos(id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+
+    CONSTRAINT fk_historial_campeon        FOREIGN KEY (campeon_participante_id)        REFERENCES participantes(id) ON UPDATE CASCADE ON DELETE SET NULL,
+    CONSTRAINT fk_historial_mejor_jugador  FOREIGN KEY (mejor_jugador_participante_id)  REFERENCES participantes(id) ON UPDATE CASCADE ON DELETE SET NULL,
+    CONSTRAINT fk_historial_mayor_puntaje  FOREIGN KEY (mayor_puntaje_participante_id)  REFERENCES participantes(id) ON UPDATE CASCADE ON DELETE SET NULL,
+    CONSTRAINT fk_historial_invicto        FOREIGN KEY (invicto_participante_id)        REFERENCES participantes(id) ON UPDATE CASCADE ON DELETE SET NULL,
+    CONSTRAINT fk_historial_menos_derrotas FOREIGN KEY (menos_derrotas_participante_id) REFERENCES participantes(id) ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
 -- auditoria

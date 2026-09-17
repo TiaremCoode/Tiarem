@@ -38,6 +38,10 @@ $router->get('/torneos/{codigo}/participantes', [ParticipanteController::class, 
 $router->post('/torneos/{codigo}/participantes', [ParticipanteController::class, 'store']);
 $router->post('/torneos/{codigo}/participantes/{id}/eliminar', [ParticipanteController::class, 'destroy']);
 
+// -------- Módulo de resultados / competencia (solo organizador/admin gestionan) --------
+$router->post('/torneos/{codigo}/iniciar', [CompetenciaController::class, 'iniciar']);
+$router->post('/torneos/{codigo}/enfrentamientos/{id}/resultado', [CompetenciaController::class, 'resultado']);
+
 // -------- Pública, con parámetro (va después de las rutas fijas de /torneos/...) --------
 $router->get('/torneos/{codigo}', [TorneoController::class, 'show']);
 

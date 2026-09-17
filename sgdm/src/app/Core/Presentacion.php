@@ -30,4 +30,78 @@ final class Presentacion
         };
         return [$clase, ucfirst($estado)];
     }
+
+    /**
+     * Nombre a mostrar de una ronda, según el formato del torneo:
+     * "Fecha N" en liga (término habitual del todos-contra-todos),
+     * "Ronda N de TOTAL" en suizo, y el nombre de instancia de eliminación
+     * directa (Final / Semifinal / Cuartos / Octavos) contando desde el
+     * final hacia atrás según cuántas rondas le queden al torneo.
+     */
+    public static function nombreRonda(string $formatoCodigo, int $numero, int $totalRondas): string
+    {
+        if ($formatoCodigo === 'eliminacion_directa') {
+            return match ($totalRondas - $numero) {
+                0       => 'Final',
+                1       => 'Semifinal',
+                2       => 'Cuartos de final',
+                3       => 'Octavos de final',
+                default => "Ronda {$numero}",
+            };
+        }
+        if ($formatoCodigo === 'suizo') {
+            return "Ronda {$numero} de {$totalRondas}";
+        }
+        return "Fecha {$numero}";
+    }
+
+    /** @return array{0: string, 1: string} [claseCss, textoVisible] */
+    public static function tagEstadoRonda(string $estado): array
+    {
+        $clase = match ($estado) {
+            'abierta' => 'en-curso',
+            'cerrada' => 'cerrado',
+            default   => 'proximo', // pendiente
+        };
+        $texto = match ($estado) {
+            'abierta' => 'En juego',
+            'cerrada' => 'Cerrada',
+            default   => 'Por jugar',
+        };
+        return [$clase, $texto];
+    }
+
+    /** Puntaje sin decimales innecesarios: 3.00 -> "3", 2.50 -> "2.5". */
+    public static function numero($valor): string
+    {
+        if ($valor === null) {
+            return '—';
+        }
+        $texto = rtrim(rtrim(number_format((float) $valor, 2, '.', ''), '0'), '.');
+        return $texto === '' ? '0' : $texto;
+    }
+
+    /** Duración entre dos fechas datetime, en un formato breve y legible. */
+    public static function duracion(?string $inicio, ?string $fin): string
+    {
+        if (!$inicio || !$fin) {
+            return '—';
+        }
+        $segundos = max(0, strtotime($fin) - strtotime($inicio));
+        $dias = intdiv($segundos, 86400);
+        $horas = intdiv($segundos % 86400, 3600);
+        $minutos = intdiv($segundos % 3600, 60);
+
+        $partes = [];
+        if ($dias > 0) {
+            $partes[] = "{$dias} d";
+        }
+        if ($horas > 0) {
+            $partes[] = "{$horas} h";
+        }
+        if ($dias === 0 && $minutos > 0) {
+            $partes[] = "{$minutos} min";
+        }
+        return $partes ? implode(' ', $partes) : 'Menos de un minuto';
+    }
 }

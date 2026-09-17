@@ -105,4 +105,32 @@ class Auth
             exit;
         }
     }
+
+    /**
+     * ¿La sesión actual puede gestionar ESE torneo puntual? Es organizador
+     * de ese torneo (torneos.organizador_id) o admin general. Centraliza
+     * una comparación que antes estaba repetida en TorneoController::show()
+     * y ParticipanteController::autorizar(); ahora también la usa
+     * CompetenciaController.
+     */
+    public static function esOrganizadorOAdmin(array $torneo): bool
+    {
+        $usuario = self::user();
+        if (!$usuario) {
+            return false;
+        }
+        return (int) $usuario['id'] === (int) $torneo['organizador_id']
+            || $usuario['rol_codigo'] === Roles::ADMIN_GENERAL;
+    }
+
+    /** Exige sesión iniciada y que sea organizador de ESE torneo o admin general; corta la petición con 403 si no. */
+    public static function requireOrganizadorOAdmin(array $torneo): void
+    {
+        self::requireLogin();
+        if (!self::esOrganizadorOAdmin($torneo)) {
+            http_response_code(403);
+            require __DIR__ . '/../Views/errors/403.php';
+            exit;
+        }
+    }
 }

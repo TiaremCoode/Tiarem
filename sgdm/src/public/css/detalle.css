@@ -9,34 +9,18 @@
 .torneo-title { font-size: var(--fs-h1); margin: 0.6rem 0 0.3rem; }
 .torneo-meta { color: var(--color-plata-tenue); font-size: var(--fs-caption); }
 
-/* Tabs */
-.tabs-scroll {
-  display: flex;
-  gap: var(--space-lg);
-  overflow-x: auto;
-  border-bottom: 1px solid var(--color-borde);
-  padding-top: var(--space-sm);
-  scrollbar-width: none;
-}
-.tabs-scroll::-webkit-scrollbar { display: none; }
-
-.tab-item {
-  flex-shrink: 0;
-  background: transparent;
-  border: none;
-  border-bottom: 3px solid transparent;
-  color: var(--color-plata-tenue);
-  font-weight: 600;
-  padding: 0.8rem 0.1rem;
-  font-size: var(--fs-body);
-  white-space: nowrap;
-}
-.tab-item.active { color: var(--color-plata); border-color: var(--color-plata); }
-
 .tab-panel { padding-top: var(--space-lg); }
 
+/* Iniciar torneo */
+.iniciar-torneo-card { display: flex; flex-direction: column; gap: var(--space-sm); margin-bottom: var(--space-lg); }
+
+/* Rondas */
+.round-block { margin-bottom: var(--space-xl); }
+.round-heading { margin-bottom: var(--space-sm); }
+.round-heading h3 { font-family: var(--font-display); font-size: var(--fs-h3); margin: 0; }
+
 /* Enfrentamientos */
-.matches-list { display: flex; flex-direction: column; gap: var(--space-sm); margin-bottom: var(--space-xl); }
+.matches-list { display: flex; flex-direction: column; gap: var(--space-sm); }
 
 .match-row {
   display: flex;
@@ -49,8 +33,28 @@
 .player-name { color: var(--color-texto); }
 .match-vs { color: var(--color-plata-tenue); font-size: var(--fs-caption); font-weight: 500; }
 
+/* Carga de resultado en línea, dentro de un match-row */
+.result-form { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.input-score { width: 4.5rem; text-align: center; padding: 0.5rem; }
+.result-form-sep { color: var(--color-plata-tenue); font-weight: 600; }
+
 @media (min-width: 560px) {
   .match-row { flex-direction: row; align-items: center; justify-content: space-between; }
+}
+
+/* Resumen final (campeón + estadísticas) */
+.champion-banner { text-align: center; margin-bottom: var(--space-md); }
+.champion-label { font-family: var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; font-size: 0.85rem; color: var(--color-plata-tenue); margin: 0 0 0.3rem; }
+.champion-name { font-size: var(--fs-h2); font-weight: 700; margin: 0; }
+.champion-team { color: var(--color-plata-tenue); font-weight: 500; }
+
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm); margin-bottom: var(--space-xl); }
+.stat-card { text-align: center; }
+.stat-label { font-size: var(--fs-caption); color: var(--color-plata-tenue); margin: 0 0 0.3rem; }
+.stat-value { font-weight: 600; margin: 0; }
+
+@media (min-width: 640px) {
+  .stats-grid { grid-template-columns: repeat(5, 1fr); }
 }
 
 /* Tabla de posiciones */

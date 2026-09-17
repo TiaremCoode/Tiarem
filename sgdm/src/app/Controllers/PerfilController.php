@@ -15,6 +15,7 @@ class PerfilController extends Controller
         $this->view('perfil', [
             'usuario' => $usuario,
             'torneos' => $torneos,
+            'titulos' => TorneoHistorial::titulosDe((int) $usuario['id']),
             'mensaje' => $_SESSION['perfil_mensaje'] ?? null,
         ]);
         unset($_SESSION['perfil_mensaje']);
